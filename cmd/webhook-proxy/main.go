@@ -18,6 +18,9 @@ var (
 	date    = "unknown"
 )
 
+// exitFunc allows us to override the exit behavior for testing
+var exitFunc = os.Exit
+
 func main() {
 	// Parse command line flags
 	configPath := flag.String("config", "config.yaml", "Path to configuration file")
@@ -27,7 +30,7 @@ func main() {
 	// Show version information if requested
 	if *showVersion {
 		fmt.Printf("webhook-proxy version %s, commit %s, built at %s\n", version, commit, date)
-		os.Exit(0)
+		exitFunc(0)
 	}
 
 	// Initialize logger
@@ -45,7 +48,7 @@ func main() {
 			"error": err,
 			"path":  *configPath,
 		}).Fatal("Failed to load configuration")
-		os.Exit(1)
+		exitFunc(1)
 	}
 
 	// Configure logger based on config
@@ -58,6 +61,6 @@ func main() {
 		log.WithFields(logrus.Fields{
 			"error": err,
 		}).Fatal("Failed to start server")
-		os.Exit(1)
+		exitFunc(1)
 	}
 }

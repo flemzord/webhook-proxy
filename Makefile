@@ -14,7 +14,6 @@ clean:
 	@rm -f webhook-proxy
 	@rm -rf dist/
 	@rm -f coverage.out
-	@rm -f coverage.html
 
 # Run tests
 test:
@@ -24,17 +23,18 @@ test:
 # Generate coverage report
 coverage:
 	@echo "Generating coverage report..."
-	@go test -coverprofile=coverage.out ./...
-	@go tool cover -html=coverage.out -o coverage.html
+	@go test -coverprofile=coverage.out ./internal/...
 	@go tool cover -func=coverage.out
-	@echo "Coverage report generated: coverage.html"
+	@echo "Total coverage:" 
+	@go tool cover -func=coverage.out | grep total | awk '{print $$3}'
+	@rm -f coverage.out
 
 # Run linter and check test coverage
 lint:
 	@echo "Running linter..."
 	@golangci-lint run ./...
 	@echo "Checking test coverage..."
-	@go test -coverprofile=coverage.out ./...
+	@go test -coverprofile=coverage.out ./internal/...
 	@go tool cover -func=coverage.out | grep total | awk '{print "Total coverage: " $$3}'
 	@rm -f coverage.out
 

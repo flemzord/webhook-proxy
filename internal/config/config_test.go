@@ -96,6 +96,29 @@ endpoints:
 	}
 }
 
+func TestLoadConfigFileNotFound(t *testing.T) {
+	_, err := LoadConfig("non-existent-file.yaml")
+	if err == nil {
+		t.Fatalf("Expected error for non-existent file, got nil")
+	}
+}
+
+func TestLoadConfigInvalidYAML(t *testing.T) {
+	invalidYAML := `
+server:
+  port: 8080
+  host: "0.0.0.0"
+  invalid yaml content
+`
+	tmpFileName := createTempConfigFile(t, invalidYAML)
+	defer os.Remove(tmpFileName)
+
+	_, err := LoadConfig(tmpFileName)
+	if err == nil {
+		t.Fatalf("Expected error for invalid YAML, got nil")
+	}
+}
+
 func TestLoadConfigDefaults(t *testing.T) {
 	// Create a minimal config file to test defaults
 	configContent := `
@@ -139,6 +162,28 @@ endpoints:
 	}
 	if dest.Timeout != 5*time.Second {
 		t.Errorf("Expected default destination timeout 5s, got %s", dest.Timeout)
+	}
+}
+
+func TestSetDefaultValuesWithNegativeRetries(t *testing.T) {
+	config := &Config{
+		Endpoints: []EndpointConfig{
+			{
+				Path: "/webhook/test",
+				Destinations: []DestinationConfig{
+					{
+						URL:     "https://example.com/webhook",
+						Retries: -1, // Negative retries should be set to 0
+					},
+				},
+			},
+		},
+	}
+
+	setDefaultValues(config)
+
+	if config.Endpoints[0].Destinations[0].Retries != 0 {
+		t.Errorf("Expected retries to be set to 0, got %d", config.Endpoints[0].Destinations[0].Retries)
 	}
 }
 
@@ -222,6 +267,58 @@ func TestValidateConfig(t *testing.T) {
 			expectError: true,
 		},
 		{
+			name: "Invalid logging format",
+			config: Config{
+				Server: ServerConfig{
+					Port: 8080,
+					Host: "0.0.0.0",
+				},
+				Logging: LoggingConfig{
+					Level:  "info",
+					Format: "invalid", // Invalid format
+					Output: "stdout",
+				},
+				Endpoints: []EndpointConfig{
+					{
+						Path: "/webhook/test",
+						Destinations: []DestinationConfig{
+							{
+								URL:    "https://example.com/webhook",
+								Method: "POST",
+							},
+						},
+					},
+				},
+			},
+			expectError: true,
+		},
+		{
+			name: "Invalid logging output",
+			config: Config{
+				Server: ServerConfig{
+					Port: 8080,
+					Host: "0.0.0.0",
+				},
+				Logging: LoggingConfig{
+					Level:  "info",
+					Format: "json",
+					Output: "invalid", // Invalid output
+				},
+				Endpoints: []EndpointConfig{
+					{
+						Path: "/webhook/test",
+						Destinations: []DestinationConfig{
+							{
+								URL:    "https://example.com/webhook",
+								Method: "POST",
+							},
+						},
+					},
+				},
+			},
+			expectError: true,
+		},
+		{
 			name: "Missing endpoint path",
 			config: Config{
 				Server: ServerConfig{
@@ -236,6 +333,32 @@ func TestValidateConfig(t *testing.T) {
 				Endpoints: []EndpointConfig{
 					{
 						Path: "", // Missing path
+						Destinations: []DestinationConfig{
+							{
+								URL:    "https://example.com/webhook",
+								Method: "POST",
+							},
+						},
+					},
+				},
+			},
+			expectError: true,
+		},
+		{
+			name: "Path without leading slash",
+			config: Config{
+				Server: ServerConfig{
+					Port: 8080,
+					Host: "0.0.0.0",
+				},
+				Logging: LoggingConfig{
+					Level:  "info",
+					Format: "json",
+					Output: "stdout",
+				},
+				Endpoints: []EndpointConfig{
+					{
+						Path: "webhook/test", // Missing leading slash
 						Destinations: []DestinationConfig{
 							{
 								URL:    "https://example.com/webhook",
@@ -274,6 +397,139 @@ func TestValidateConfig(t *testing.T) {
 			expectError: true,
 		},
 		{
+			name: "Invalid destination URL",
+			config: Config{
+				Server: ServerConfig{
+					Port: 8080,
+					Host: "0.0.0.0",
+				},
+				Logging: LoggingConfig{
+					Level:  "info",
+					Format: "json",
+					Output: "stdout",
+				},
+				Endpoints: []EndpointConfig{
+					{
+						Path: "/webhook/test",
+						Destinations: []DestinationConfig{
+							{
+								URL:    "invalid-url", // Invalid URL
+								Method: "POST",
+							},
+						},
+					},
+				},
+			},
+			expectError: true,
+		},
+		{
+			name: "Invalid HTTP method",
+			config: Config{
+				Server: ServerConfig{
+					Port: 8080,
+					Host: "0.0.0.0",
+				},
+				Logging: LoggingConfig{
+					Level:  "info",
+					Format: "json",
+					Output: "stdout",
+				},
+				Endpoints: []EndpointConfig{
+					{
+						Path: "/webhook/test",
+						Destinations: []DestinationConfig{
+							{
+								URL:    "https://example.com/webhook",
+								Method: "INVALID", // Invalid method
+							},
+						},
+					},
+				},
+			},
+			expectError: true,
+		},
+		{
+			name: "Negative timeout",
+			config: Config{
+				Server: ServerConfig{
+					Port: 8080,
+					Host: "0.0.0.0",
+				},
+				Logging: LoggingConfig{
+					Level:  "info",
+					Format: "json",
+					Output: "stdout",
+				},
+				Endpoints: []EndpointConfig{
+					{
+						Path: "/webhook/test",
+						Destinations: []DestinationConfig{
+							{
+								URL:     "https://example.com/webhook",
+								Method:  "POST",
+								Timeout: -1 * time.Second, // Negative timeout
+							},
+						},
+					},
+				},
+			},
+			expectError: true,
+		},
+		{
+			name: "Negative retries",
+			config: Config{
+				Server: ServerConfig{
+					Port: 8080,
+					Host: "0.0.0.0",
+				},
+				Logging: LoggingConfig{
+					Level:  "info",
+					Format: "json",
+					Output: "stdout",
+				},
+				Endpoints: []EndpointConfig{
+					{
+						Path: "/webhook/test",
+						Destinations: []DestinationConfig{
+							{
+								URL:     "https://example.com/webhook",
+								Method:  "POST",
+								Retries: -1, // Negative retries
+							},
+						},
+					},
+				},
+			},
+			expectError: true,
+		},
+		{
+			name: "Negative retry delay",
+			config: Config{
+				Server: ServerConfig{
+					Port: 8080,
+					Host: "0.0.0.0",
+				},
+				Logging: LoggingConfig{
+					Level:  "info",
+					Format: "json",
+					Output: "stdout",
+				},
+				Endpoints: []EndpointConfig{
+					{
+						Path: "/webhook/test",
+						Destinations: []DestinationConfig{
+							{
+								URL:        "https://example.com/webhook",
+								Method:     "POST",
+								RetryDelay: -1 * time.Second, // Negative retry delay
+							},
+						},
+					},
+				},
+			},
+			expectError: true,
+		},
+		{
 			name: "No destinations",
 			config: Config{
 				Server: ServerConfig{
@@ -291,6 +547,22 @@ func TestValidateConfig(t *testing.T) {
 						Destinations: []DestinationConfig{}, // No destinations
 					},
 				},
+			},
+			expectError: true,
+		},
+		{
+			name: "No endpoints",
+			config: Config{
+				Server: ServerConfig{
+					Port: 8080,
+					Host: "0.0.0.0",
+				},
+				Logging: LoggingConfig{
+					Level:  "info",
+					Format: "json",
+					Output: "stdout",
+				},
+				Endpoints: []EndpointConfig{}, // No endpoints
 			},
 			expectError: true,
 		},
