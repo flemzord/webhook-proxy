@@ -15,6 +15,12 @@ Un service proxy pour recevoir des webhooks et les transférer à plusieurs dest
 
 ## Installation
 
+### Binaires précompilés
+
+Vous pouvez télécharger les binaires précompilés pour votre système d'exploitation depuis la [page des releases](https://github.com/flemzord/webhook-proxy/releases).
+
+### Compilation depuis les sources
+
 ```bash
 # Cloner le dépôt
 git clone https://github.com/flemzord/webhook-proxy.git
@@ -25,6 +31,16 @@ go build -o webhook-proxy ./cmd/webhook-proxy
 
 # Exécuter le service
 ./webhook-proxy -config config.yaml
+```
+
+### Utilisation avec Docker
+
+```bash
+# Télécharger l'image
+docker pull flemzord/webhook-proxy:latest
+
+# Exécuter le conteneur avec votre fichier de configuration
+docker run -v $(pwd)/config.yaml:/app/config/config.yaml -p 8080:8080 flemzord/webhook-proxy:latest
 ```
 
 ## Configuration
@@ -151,6 +167,54 @@ Exemple de réponse de l'endpoint `/metrics` :
 ```
 
 ## Développement
+
+### Prérequis
+
+- Go 1.21 ou supérieur
+- Make
+- golangci-lint (pour le linting)
+- goreleaser (pour la création des releases)
+
+Vous pouvez installer les dépendances de développement avec :
+
+```bash
+make dev-deps
+```
+
+### Commandes Make
+
+- `make build` : Compile l'application
+- `make test` : Exécute les tests
+- `make lint` : Vérifie le code avec golangci-lint
+- `make lint-fix` : Corrige automatiquement les problèmes de linting
+- `make release-snapshot` : Crée une release snapshot avec GoReleaser (pour tester)
+- `make release` : Crée une release officielle avec GoReleaser
+
+### Création d'une release
+
+Pour créer une nouvelle release :
+
+1. Assurez-vous que tous les tests passent et que le linting est correct
+   ```bash
+   make lint test
+   ```
+
+2. Créez un tag Git pour la nouvelle version
+   ```bash
+   git tag -a v1.0.0 -m "Version 1.0.0"
+   git push origin v1.0.0
+   ```
+
+3. Utilisez GoReleaser pour créer la release
+   ```bash
+   make release
+   ```
+
+Cette commande va :
+- Créer des binaires pour différentes plateformes (Linux, macOS, Windows)
+- Générer des archives contenant les binaires et la documentation
+- Créer et pousser une image Docker
+- Générer un changelog basé sur les commits
 
 Pour plus de détails sur le développement et les fonctionnalités à venir, consultez le fichier [TODO.md](TODO.md).
 

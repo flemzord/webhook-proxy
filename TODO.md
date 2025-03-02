@@ -76,12 +76,12 @@ endpoints:
 - [x] Corriger les problèmes de linting existants
 
 ### Phase 6: Déploiement et distribution
-- [ ] Configurer GoReleaser pour la création des binaires
-- [ ] Créer un Dockerfile pour la conteneurisation
+- [x] Configurer GoReleaser pour la création des binaires
+- [x] Créer un Dockerfile pour la conteneurisation
 
 ### Phase 7: Intégration continue
-- [ ] Configurer GitHub Actions pour l'intégration continue
-- [ ] Ajouter des workflows pour les tests automatiques
-- [ ] Configurer le linting automatique
-- [ ] Ajouter la publication automatique des releases avec GoReleaser
-- [ ] Configurer la construction et la publication des images Docker
+- [x] Configurer GitHub Actions pour l'intégration continue
+- [x] Ajouter des workflows pour les tests automatiques
+- [x] Configurer le linting automatique
+- [x] Ajouter la publication automatique des releases avec GoReleaser
+- [x] Configurer la construction et la publication des images Docker

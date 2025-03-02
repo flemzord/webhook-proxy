@@ -21,6 +21,7 @@ type Server struct {
 	router        *chi.Mux
 	log           *logrus.Logger
 	proxyHandlers map[string]*proxy.Handler
+	version       string
 }
 
 // NewServer creates a new HTTP server
@@ -55,6 +56,7 @@ func NewServer(cfg *config.Config, log *logrus.Logger) *Server {
 		router:        router,
 		log:           log,
 		proxyHandlers: make(map[string]*proxy.Handler),
+		version:       "1.0.0", // This will be updated from main
 	}
 }
 
@@ -200,7 +202,7 @@ func (s *Server) registerHealthCheckEndpoint() {
 		health := map[string]interface{}{
 			"status":    "ok",
 			"timestamp": time.Now().Format(time.RFC3339),
-			"version":   "1.0.0", // TODO: Get from build info
+			"version":   s.version,
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -230,4 +232,9 @@ func readRequestBody(r *http.Request) ([]byte, error) {
 	}
 
 	return body, nil
+}
+
+// SetVersion sets the version of the server
+func (s *Server) SetVersion(version string) {
+	s.version = version
 }
