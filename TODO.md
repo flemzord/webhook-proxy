@@ -67,18 +67,21 @@ endpoints:
 - [x] Ajouter des tests unitaires pour le proxy
 - [x] Ajouter des endpoints pour les métriques et la santé
 
-### Phase 4: Fonctionnalités avancées
-- [ ] Ajouter la possibilité de transformer les webhooks avant de les transférer
-- [ ] Implémenter l'authentification pour les endpoints
-- [ ] Ajouter la possibilité de filtrer les webhooks en fonction de leur contenu
-- [ ] Créer un tableau de bord pour visualiser les webhooks reçus et transférés
-- [ ] Ajouter la possibilité de rejouer les webhooks en échec
+### Phase 4: Documentation et API
+- [ ] Créer un fichier OpenAPI pour documenter l'API
 
-## Future Features (v2)
-- Authentication for incoming webhooks
-- Payload validation (JSON schema)
-- Web interface for log visualization
-- Queue mechanism for handling load spikes
-- Advanced payload transformations
-- Rule-based webhook filtering
-- Metrics and monitoring (Prometheus) 
+### Phase 5: Qualité du code et outillage
+- [ ] Ajouter golangci-lint pour le linting du code
+- [ ] Configurer les règles de linting adaptées au projet
+- [ ] Corriger les problèmes de linting existants
+
+### Phase 6: Déploiement et distribution
+- [ ] Configurer GoReleaser pour la création des binaires
+- [ ] Créer un Dockerfile pour la conteneurisation
+
+### Phase 7: Intégration continue
+- [ ] Configurer GitHub Actions pour l'intégration continue
+- [ ] Ajouter des workflows pour les tests automatiques
+- [ ] Configurer le linting automatique
+- [ ] Ajouter la publication automatique des releases avec GoReleaser
+- [ ] Configurer la construction et la publication des images Docker
