@@ -1,0 +1,9 @@
+---
+description: 
+globs: **/*.go
+alwaysApply: false
+---
+# The rules you must follow before finishing.
+- The tests must run without errors
+- The linter must run without errors
+- The commands must be executed via the associated Make command

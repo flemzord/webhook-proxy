@@ -7,11 +7,10 @@ import (
 )
 
 func TestLoadConfig(t *testing.T) {
-	// Create a temporary config file
 	configContent := `
 server:
   port: 8080
-  host: "127.0.0.1"
+  host: "0.0.0.0"
 
 logging:
   level: "info"
@@ -19,31 +18,22 @@ logging:
   output: "stdout"
 
 endpoints:
-  - path: "/webhook/test"
+  - path: "/webhook/github"
     destinations:
       - url: "https://example.com/webhook"
         method: "POST"
         headers:
           Content-Type: "application/json"
-        timeout: 5s
+          X-Custom-Header: "custom-value"
+        timeout: 10s
         retries: 3
         retry_delay: 1s
 `
-	tmpfile, err := os.CreateTemp("", "config-*.yaml")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	defer os.Remove(tmpfile.Name())
-
-	if _, err := tmpfile.Write([]byte(configContent)); err != nil {
-		t.Fatalf("Failed to write to temp file: %v", err)
-	}
-	if err := tmpfile.Close(); err != nil {
-		t.Fatalf("Failed to close temp file: %v", err)
-	}
+	tmpFileName := createTempConfigFile(t, configContent)
+	defer os.Remove(tmpFileName)
 
 	// Load the config
-	config, err := LoadConfig(tmpfile.Name())
+	config, err := LoadConfig(tmpFileName)
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}
@@ -52,8 +42,8 @@ endpoints:
 	if config.Server.Port != 8080 {
 		t.Errorf("Expected server port 8080, got %d", config.Server.Port)
 	}
-	if config.Server.Host != "127.0.0.1" {
-		t.Errorf("Expected server host 127.0.0.1, got %s", config.Server.Host)
+	if config.Server.Host != "0.0.0.0" {
+		t.Errorf("Expected server host 0.0.0.0, got %s", config.Server.Host)
 	}
 
 	// Verify logging config
@@ -71,8 +61,8 @@ endpoints:
 	if len(config.Endpoints) != 1 {
 		t.Fatalf("Expected 1 endpoint, got %d", len(config.Endpoints))
 	}
-	if config.Endpoints[0].Path != "/webhook/test" {
-		t.Errorf("Expected endpoint path /webhook/test, got %s", config.Endpoints[0].Path)
+	if config.Endpoints[0].Path != "/webhook/github" {
+		t.Errorf("Expected endpoint path /webhook/github, got %s", config.Endpoints[0].Path)
 	}
 
 	// Verify destinations
@@ -86,8 +76,8 @@ endpoints:
 	if dest.Method != "POST" {
 		t.Errorf("Expected destination method POST, got %s", dest.Method)
 	}
-	if dest.Timeout != 5*time.Second {
-		t.Errorf("Expected destination timeout 5s, got %s", dest.Timeout)
+	if dest.Timeout != 10*time.Second {
+		t.Errorf("Expected destination timeout 10s, got %s", dest.Timeout)
 	}
 	if dest.Retries != 3 {
 		t.Errorf("Expected destination retries 3, got %d", dest.Retries)
@@ -95,8 +85,14 @@ endpoints:
 	if dest.RetryDelay != 1*time.Second {
 		t.Errorf("Expected destination retry delay 1s, got %s", dest.RetryDelay)
 	}
+	if len(dest.Headers) != 2 {
+		t.Fatalf("Expected 2 headers, got %d", len(dest.Headers))
+	}
 	if dest.Headers["Content-Type"] != "application/json" {
 		t.Errorf("Expected Content-Type header application/json, got %s", dest.Headers["Content-Type"])
+	}
+	if dest.Headers["X-Custom-Header"] != "custom-value" {
+		t.Errorf("Expected X-Custom-Header header custom-value, got %s", dest.Headers["X-Custom-Header"])
 	}
 }
 
@@ -108,21 +104,11 @@ endpoints:
     destinations:
       - url: "https://example.com/webhook"
 `
-	tmpfile, err := os.CreateTemp("", "config-*.yaml")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	defer os.Remove(tmpfile.Name())
-
-	if _, err := tmpfile.Write([]byte(configContent)); err != nil {
-		t.Fatalf("Failed to write to temp file: %v", err)
-	}
-	if err := tmpfile.Close(); err != nil {
-		t.Fatalf("Failed to close temp file: %v", err)
-	}
+	tmpFileName := createTempConfigFile(t, configContent)
+	defer os.Remove(tmpFileName)
 
 	// Load the config
-	config, err := LoadConfig(tmpfile.Name())
+	config, err := LoadConfig(tmpFileName)
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}
@@ -345,4 +331,22 @@ func TestValidateConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Helper function to create a temporary config file
+func createTempConfigFile(t *testing.T, configContent string) string {
+	tmpfile, err := os.CreateTemp("", "config-*.yaml")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+
+	if _, writeErr := tmpfile.Write([]byte(configContent)); writeErr != nil {
+		t.Fatalf("Failed to write to temp file: %v", writeErr)
+	}
+
+	if closeErr := tmpfile.Close(); closeErr != nil {
+		t.Fatalf("Failed to close temp file: %v", closeErr)
+	}
+
+	return tmpfile.Name()
 }

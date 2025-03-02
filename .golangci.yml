@@ -1,0 +1,180 @@
+# golangci-lint configuration file
+# See https://golangci-lint.run/usage/configuration/ for more information
+
+run:
+  # Timeout for running linters, default is 1m
+  timeout: 5m
+  # Include test files or not, default is true
+  tests: true
+  # Allow multiple parallel golangci-lint instances running
+  allow-parallel-runners: true
+
+# Output configuration options
+output:
+  # Format: colored-line-number|line-number|json|tab|checkstyle|code-climate|junit-xml|github-actions
+  format: colored-line-number
+  # Print lines of code with issue, default is true
+  print-issued-lines: true
+  # Print linter name in the end of issue text, default is true
+  print-linter-name: true
+
+# All available linters and their configuration
+linters:
+  disable-all: true
+  enable:
+    # Default linters
+    - errcheck      # Detect unchecked errors
+    - gosimple      # Simplify code
+    - govet         # Examine Go source code and reports suspicious constructs
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Go static analysis
+    - typecheck     # Like the front-end of a Go compiler
+    - unused        # Check for unused constants, variables, functions and types
+    
+    # Additional linters
+    - bodyclose     # Checks whether HTTP response body is closed
+    - dogsled       # Checks for too many blank identifiers in variable assignment
+    - dupl          # Code clone detection
+    - gochecknoinits # Check that no init functions are present
+    - goconst       # Find repeated strings that could be constants
+    - gocritic      # Provides diagnostics that check for bugs, performance and style issues
+    - gocyclo       # Check function complexity
+    - gofmt         # Check if code was gofmt-ed
+    - goimports     # Check imports formatting
+    - gosec         # Inspects source code for security problems
+    - misspell      # Find commonly misspelled English words
+    - nakedret      # Find naked returns
+    - prealloc      # Find slice declarations that could potentially be preallocated
+    - revive        # Fast, configurable, extensible, flexible, and beautiful linter for Go
+    - unconvert     # Remove unnecessary type conversions
+    - unparam       # Find unused function parameters
+
+# Linter settings
+linters-settings:
+  errcheck:
+    # Report about not checking of errors in type assertions: `a := b.(MyStruct)`.
+    check-type-assertions: true
+    # Report about assignment of errors to blank identifier: `num, _ := strconv.Atoi(numStr)`.
+    check-blank: true
+  
+  gocyclo:
+    # Minimal code complexity to report, 30 by default
+    min-complexity: 15
+  
+  gosec:
+    # To select a subset of rules to run
+    includes:
+      - G101 # Look for hard coded credentials
+      - G102 # Bind to all interfaces
+      - G103 # Audit the use of unsafe block
+      - G104 # Audit errors not checked
+      - G107 # Url provided to HTTP request as taint input
+      - G201 # SQL query construction using format string
+      - G202 # SQL query construction using string concatenation
+      - G203 # Use of unescaped data in HTML templates
+      - G204 # Audit use of command execution
+      - G301 # Poor file permissions used when creating a directory
+      - G302 # Poor file permissions used when creation of a file
+      - G303 # Creating tempfile using a predictable path
+      - G304 # File path provided as taint input
+      - G305 # File traversal when extracting zip/tar archive
+      - G401 # Detect the usage of weak crypto algorithms
+      - G402 # Look for bad TLS connection settings
+      - G403 # Ensure minimum RSA key length of 2048 bits
+      - G404 # Insecure random number source (rand)
+      - G501 # Import blocklist: crypto/md5
+      - G502 # Import blocklist: crypto/sha1
+      - G503 # Import blocklist: crypto/rand
+      - G504 # Import blocklist: net/http/cgi
+      - G505 # Import blocklist: crypto/sha256
+      - G601 # Implicit memory aliasing in for loop
+  
+  govet:
+    # Report about shadowed variables
+    check-shadowing: true
+    # Settings per analyzer
+    settings:
+      printf: # analyzer name
+        funcs: # run `go tool vet help` to see available analyzers
+          - (github.com/sirupsen/logrus.Entry).Debugf
+          - (github.com/sirupsen/logrus.Entry).Infof
+          - (github.com/sirupsen/logrus.Entry).Warnf
+          - (github.com/sirupsen/logrus.Entry).Errorf
+          - (github.com/sirupsen/logrus.Entry).Fatalf
+          - (github.com/sirupsen/logrus.Logger).Debugf
+          - (github.com/sirupsen/logrus.Logger).Infof
+          - (github.com/sirupsen/logrus.Logger).Warnf
+          - (github.com/sirupsen/logrus.Logger).Errorf
+          - (github.com/sirupsen/logrus.Logger).Fatalf
+  
+  revive:
+    # Maximum number of open files at the same time.
+    max-open-files: 2048
+    # Sets the default severity.
+    severity: warning
+    # Enable all available rules.
+    enable-all-rules: false
+    rules:
+      # https://github.com/mgechev/revive/blob/master/RULES.md
+      - name: blank-imports
+        severity: warning
+      - name: context-as-argument
+        severity: warning
+      - name: context-keys-type
+        severity: warning
+      - name: dot-imports
+        severity: warning
+      - name: error-return
+        severity: warning
+      - name: error-strings
+        severity: warning
+      - name: error-naming
+        severity: warning
+      - name: exported
+        severity: warning
+      - name: increment-decrement
+        severity: warning
+      - name: var-naming
+        severity: warning
+      - name: var-declaration
+        severity: warning
+      - name: package-comments
+        severity: warning
+      - name: range
+        severity: warning
+      - name: receiver-naming
+        severity: warning
+      - name: time-naming
+        severity: warning
+      - name: unexported-return
+        severity: warning
+      - name: indent-error-flow
+        severity: warning
+      - name: errorf
+        severity: warning
+      - name: empty-block
+        severity: warning
+      - name: superfluous-else
+        severity: warning
+      - name: unused-parameter
+        severity: warning
+      - name: unreachable-code
+        severity: warning
+      - name: redefines-builtin-id
+        severity: warning
+
+# Issues configuration
+issues:
+  # Maximum count of issues with the same text
+  max-same-issues: 3
+  # Maximum issues count per one linter
+  max-issues-per-linter: 50
+  # Excluding configuration per-path, per-linter, per-text and per-source
+  exclude-rules:
+    # Exclude some linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - dupl
+        - gosec
+        - gochecknoinits 

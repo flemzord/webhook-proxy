@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"strconv"
@@ -12,6 +11,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Default configuration values
+const (
+	DefaultLogLevel  = "info"
+	DefaultLogFormat = "json"
+	DefaultLogOutput = "stdout"
+	DefaultMethod    = "POST"
+	DefaultHost      = "0.0.0.0"
+)
+
 // Config represents the application configuration
 type Config struct {
 	Server    ServerConfig     `yaml:"server"`
@@ -19,7 +27,7 @@ type Config struct {
 	Endpoints []EndpointConfig `yaml:"endpoints"`
 }
 
-// ServerConfig represents the HTTP server configuration
+// ServerConfig represents the server configuration
 type ServerConfig struct {
 	Port int    `yaml:"port"`
 	Host string `yaml:"host"`
@@ -33,13 +41,13 @@ type LoggingConfig struct {
 	FilePath string `yaml:"file_path"`
 }
 
-// EndpointConfig represents a webhook endpoint configuration
+// EndpointConfig represents an endpoint configuration
 type EndpointConfig struct {
 	Path         string              `yaml:"path"`
 	Destinations []DestinationConfig `yaml:"destinations"`
 }
 
-// DestinationConfig represents a webhook destination configuration
+// DestinationConfig represents a destination configuration
 type DestinationConfig struct {
 	URL        string            `yaml:"url"`
 	Method     string            `yaml:"method"`
@@ -49,32 +57,31 @@ type DestinationConfig struct {
 	RetryDelay time.Duration     `yaml:"retry_delay"`
 }
 
-// LoadConfig loads the configuration from a YAML file
+// LoadConfig loads the configuration from a file
 func LoadConfig(path string) (*Config, error) {
-	// Check if file exists
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return nil, fmt.Errorf("config file does not exist: %s", path)
-	}
-
-	data, err := ioutil.ReadFile(path)
+	// Read the configuration file
+	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+		return nil, fmt.Errorf("error reading config file: %w", err)
 	}
 
+	// Parse the YAML
 	var config Config
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse config file: %w", err)
+	err = yaml.Unmarshal(data, &config)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing config file: %w", err)
 	}
-
-	// Apply environment variable overrides
-	applyEnvironmentOverrides(&config)
 
 	// Set default values
 	setDefaultValues(&config)
 
-	// Validate configuration
-	if err := validateConfig(&config); err != nil {
-		return nil, err
+	// Apply environment variable overrides
+	applyEnvironmentOverrides(&config)
+
+	// Validate the configuration
+	err = validateConfig(&config)
+	if err != nil {
+		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
 
 	return &config, nil
@@ -87,18 +94,18 @@ func setDefaultValues(config *Config) {
 		config.Server.Port = 8080
 	}
 	if config.Server.Host == "" {
-		config.Server.Host = "0.0.0.0"
+		config.Server.Host = DefaultHost
 	}
 
 	// Logging defaults
 	if config.Logging.Level == "" {
-		config.Logging.Level = "info"
+		config.Logging.Level = DefaultLogLevel
 	}
 	if config.Logging.Format == "" {
-		config.Logging.Format = "json"
+		config.Logging.Format = DefaultLogFormat
 	}
 	if config.Logging.Output == "" {
-		config.Logging.Output = "stdout"
+		config.Logging.Output = DefaultLogOutput
 	}
 
 	// Endpoint defaults
@@ -108,7 +115,7 @@ func setDefaultValues(config *Config) {
 
 			// Default method is POST
 			if dest.Method == "" {
-				dest.Method = "POST"
+				dest.Method = DefaultMethod
 			}
 
 			// Default timeout is 5 seconds
@@ -122,13 +129,8 @@ func setDefaultValues(config *Config) {
 			}
 
 			// Default retry delay is 1 second
-			if dest.RetryDelay == 0 && dest.Retries > 0 {
+			if dest.RetryDelay == 0 {
 				dest.RetryDelay = 1 * time.Second
-			}
-
-			// Initialize headers map if nil
-			if dest.Headers == nil {
-				dest.Headers = make(map[string]string)
 			}
 		}
 	}
@@ -167,28 +169,13 @@ func applyEnvironmentOverrides(config *Config) {
 // validateConfig validates the configuration
 func validateConfig(config *Config) error {
 	// Validate server configuration
-	if config.Server.Port < 0 || config.Server.Port > 65535 {
-		return fmt.Errorf("invalid server port: %d", config.Server.Port)
+	if err := validateServerConfig(&config.Server); err != nil {
+		return err
 	}
 
 	// Validate logging configuration
-	validLevels := map[string]bool{"debug": true, "info": true, "warn": true, "error": true}
-	if !validLevels[config.Logging.Level] {
-		return fmt.Errorf("invalid logging level: %s", config.Logging.Level)
-	}
-
-	validFormats := map[string]bool{"json": true, "text": true}
-	if !validFormats[config.Logging.Format] {
-		return fmt.Errorf("invalid logging format: %s", config.Logging.Format)
-	}
-
-	validOutputs := map[string]bool{"stdout": true, "file": true}
-	if !validOutputs[config.Logging.Output] {
-		return fmt.Errorf("invalid logging output: %s", config.Logging.Output)
-	}
-
-	if config.Logging.Output == "file" && config.Logging.FilePath == "" {
-		return fmt.Errorf("file_path is required when output is file")
+	if err := validateLoggingConfig(&config.Logging); err != nil {
+		return err
 	}
 
 	// Validate endpoints
@@ -197,54 +184,104 @@ func validateConfig(config *Config) error {
 	}
 
 	for i, endpoint := range config.Endpoints {
-		if endpoint.Path == "" {
-			return fmt.Errorf("endpoint[%d]: path is required", i)
+		if err := validateEndpointConfig(i, endpoint); err != nil {
+			return err
 		}
+	}
 
-		// Ensure path starts with /
-		if !strings.HasPrefix(endpoint.Path, "/") {
-			return fmt.Errorf("endpoint[%d]: path must start with /", i)
+	return nil
+}
+
+// validateServerConfig validates the server configuration
+func validateServerConfig(server *ServerConfig) error {
+	if server.Port < 0 || server.Port > 65535 {
+		return fmt.Errorf("invalid server port: %d", server.Port)
+	}
+	return nil
+}
+
+// validateLoggingConfig validates the logging configuration
+func validateLoggingConfig(logging *LoggingConfig) error {
+	validLevels := map[string]bool{"debug": true, "info": true, "warn": true, "error": true}
+	if !validLevels[logging.Level] {
+		return fmt.Errorf("invalid logging level: %s", logging.Level)
+	}
+
+	validFormats := map[string]bool{"json": true, "text": true}
+	if !validFormats[logging.Format] {
+		return fmt.Errorf("invalid logging format: %s", logging.Format)
+	}
+
+	validOutputs := map[string]bool{"stdout": true, "file": true}
+	if !validOutputs[logging.Output] {
+		return fmt.Errorf("invalid logging output: %s", logging.Output)
+	}
+
+	if logging.Output == "file" && logging.FilePath == "" {
+		return fmt.Errorf("file_path is required when output is file")
+	}
+
+	return nil
+}
+
+// validateEndpointConfig validates an endpoint configuration
+func validateEndpointConfig(index int, endpoint EndpointConfig) error {
+	if endpoint.Path == "" {
+		return fmt.Errorf("endpoint[%d]: path is required", index)
+	}
+
+	// Ensure path starts with /
+	if !strings.HasPrefix(endpoint.Path, "/") {
+		return fmt.Errorf("endpoint[%d]: path must start with /", index)
+	}
+
+	if len(endpoint.Destinations) == 0 {
+		return fmt.Errorf("endpoint[%d]: at least one destination is required", index)
+	}
+
+	for j, dest := range endpoint.Destinations {
+		if err := validateDestinationConfig(index, j, dest); err != nil {
+			return err
 		}
+	}
 
-		if len(endpoint.Destinations) == 0 {
-			return fmt.Errorf("endpoint[%d]: at least one destination is required", i)
-		}
+	return nil
+}
 
-		for j, dest := range endpoint.Destinations {
-			if dest.URL == "" {
-				return fmt.Errorf("endpoint[%d].destination[%d]: url is required", i, j)
-			}
+// validateDestinationConfig validates a destination configuration
+func validateDestinationConfig(endpointIndex, destIndex int, dest DestinationConfig) error {
+	if dest.URL == "" {
+		return fmt.Errorf("endpoint[%d].destination[%d]: url is required", endpointIndex, destIndex)
+	}
 
-			// Validate URL
-			_, err := url.ParseRequestURI(dest.URL)
-			if err != nil {
-				return fmt.Errorf("endpoint[%d].destination[%d]: invalid url: %s", i, j, err)
-			}
+	// Validate URL
+	_, err := url.ParseRequestURI(dest.URL)
+	if err != nil {
+		return fmt.Errorf("endpoint[%d].destination[%d]: invalid url: %s", endpointIndex, destIndex, err)
+	}
 
-			// Validate HTTP method
-			validMethods := map[string]bool{
-				"GET": true, "POST": true, "PUT": true, "DELETE": true,
-				"PATCH": true, "HEAD": true, "OPTIONS": true,
-			}
-			if !validMethods[strings.ToUpper(dest.Method)] {
-				return fmt.Errorf("endpoint[%d].destination[%d]: invalid method: %s", i, j, dest.Method)
-			}
+	// Validate HTTP method
+	validMethods := map[string]bool{
+		"GET": true, "POST": true, "PUT": true, "DELETE": true,
+		"PATCH": true, "HEAD": true, "OPTIONS": true,
+	}
+	if !validMethods[strings.ToUpper(dest.Method)] {
+		return fmt.Errorf("endpoint[%d].destination[%d]: invalid method: %s", endpointIndex, destIndex, dest.Method)
+	}
 
-			// Validate timeout
-			if dest.Timeout < 0 {
-				return fmt.Errorf("endpoint[%d].destination[%d]: timeout cannot be negative", i, j)
-			}
+	// Validate timeout
+	if dest.Timeout < 0 {
+		return fmt.Errorf("endpoint[%d].destination[%d]: timeout cannot be negative", endpointIndex, destIndex)
+	}
 
-			// Validate retries
-			if dest.Retries < 0 {
-				return fmt.Errorf("endpoint[%d].destination[%d]: retries cannot be negative", i, j)
-			}
+	// Validate retries
+	if dest.Retries < 0 {
+		return fmt.Errorf("endpoint[%d].destination[%d]: retries cannot be negative", endpointIndex, destIndex)
+	}
 
-			// Validate retry delay
-			if dest.RetryDelay < 0 {
-				return fmt.Errorf("endpoint[%d].destination[%d]: retry_delay cannot be negative", i, j)
-			}
-		}
+	// Validate retry delay
+	if dest.RetryDelay < 0 {
+		return fmt.Errorf("endpoint[%d].destination[%d]: retry_delay cannot be negative", endpointIndex, destIndex)
 	}
 
 	return nil

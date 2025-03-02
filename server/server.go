@@ -20,7 +20,7 @@ type Server struct {
 	config        *config.Config
 	router        *chi.Mux
 	log           *logrus.Logger
-	proxyHandlers map[string]*proxy.ProxyHandler
+	proxyHandlers map[string]*proxy.Handler
 }
 
 // NewServer creates a new HTTP server
@@ -54,7 +54,7 @@ func NewServer(cfg *config.Config, log *logrus.Logger) *Server {
 		config:        cfg,
 		router:        router,
 		log:           log,
-		proxyHandlers: make(map[string]*proxy.ProxyHandler),
+		proxyHandlers: make(map[string]*proxy.Handler),
 	}
 }
 
@@ -129,7 +129,7 @@ func (s *Server) registerEndpoint(endpoint config.EndpointConfig) {
 
 // registerMetricsEndpoint registers the metrics endpoint
 func (s *Server) registerMetricsEndpoint() {
-	s.router.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
+	s.router.Get("/metrics", func(w http.ResponseWriter, _ *http.Request) {
 		// Collect metrics from all proxy handlers
 		metrics := make(map[string]interface{})
 
@@ -173,24 +173,30 @@ func (s *Server) registerMetricsEndpoint() {
 
 		// Return metrics as JSON
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(metrics)
+		if err := json.NewEncoder(w).Encode(metrics); err != nil {
+			s.log.WithError(err).Error("Failed to encode metrics response")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
 	})
 
 	// Add endpoint to reset metrics
-	s.router.Post("/metrics/reset", func(w http.ResponseWriter, r *http.Request) {
+	s.router.Post("/metrics/reset", func(w http.ResponseWriter, _ *http.Request) {
 		// Reset metrics for all proxy handlers
 		for _, handler := range s.proxyHandlers {
 			handler.ResetMetrics()
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok","message":"Metrics reset successfully"}`))
+		_, err := w.Write([]byte(`{"status":"ok","message":"Metrics reset successfully"}`))
+		if err != nil {
+			s.log.WithError(err).Error("Failed to write response")
+		}
 	})
 }
 
 // registerHealthCheckEndpoint registers the health check endpoint
 func (s *Server) registerHealthCheckEndpoint() {
-	s.router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+	s.router.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
 		health := map[string]interface{}{
 			"status":    "ok",
 			"timestamp": time.Now().Format(time.RFC3339),
@@ -198,7 +204,10 @@ func (s *Server) registerHealthCheckEndpoint() {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(health)
+		if err := json.NewEncoder(w).Encode(health); err != nil {
+			s.log.WithError(err).Error("Failed to encode health response")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
 	})
 }
 
