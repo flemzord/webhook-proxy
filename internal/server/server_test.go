@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -418,8 +419,41 @@ func TestRegisterEndpointBodyReadError(t *testing.T) {
 
 // TestRegisterMetricsEndpointEncodeError tests the registerMetricsEndpoint function with a JSON encode error
 func TestRegisterMetricsEndpointEncodeError(t *testing.T) {
-	// Skip this test as it's difficult to simulate a JSON encode error
-	t.Skip("Skipping test that requires simulating a JSON encode error")
+	// Create a minimal server
+	cfg := &config.Config{}
+	log := logrus.New()
+	log.SetOutput(io.Discard) // Silence logs during tests
+	server := NewServer(cfg, log)
+
+	// Create a real proxy handler
+	destinations := []config.DestinationConfig{
+		{
+			URL:     "http://example.com",
+			Method:  "POST",
+			Timeout: 5 * time.Second,
+		},
+	}
+	handler := proxy.NewProxyHandler(destinations, log)
+
+	// Add the handler to the server
+	server.proxyHandlers["/test"] = handler
+
+	// Register the metrics endpoint
+	server.registerMetricsEndpoint()
+
+	// Create a test request
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	w := &mockResponseWriter{
+		header:     http.Header{},
+		statusCode: http.StatusOK,
+		writeError: true, // Simulate a write error
+	}
+
+	// Serve the request
+	server.router.ServeHTTP(w, req)
+
+	// Assert that the status code was set to 500 Internal Server Error
+	assert.Equal(t, http.StatusInternalServerError, w.statusCode)
 }
 
 // TestRegisterMetricsResetEndpoint tests the metrics reset endpoint
@@ -498,12 +532,57 @@ func TestRegisterMetricsResetEndpoint(t *testing.T) {
 
 // TestRegisterHealthCheckEndpointEncodeError tests the registerHealthCheckEndpoint function with a JSON encode error
 func TestRegisterHealthCheckEndpointEncodeError(t *testing.T) {
-	// Skip this test as it's difficult to simulate a JSON encode error
-	t.Skip("Skipping test that requires simulating a JSON encode error")
+	// Create a minimal server
+	cfg := &config.Config{}
+	log := logrus.New()
+	log.SetOutput(io.Discard) // Silence logs during tests
+	server := NewServer(cfg, log)
+
+	// Register the health check endpoint
+	server.registerHealthCheckEndpoint()
+
+	// Create a test request
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	w := &mockResponseWriter{
+		header:     http.Header{},
+		statusCode: http.StatusOK,
+		writeError: true, // Simulate a write error
+	}
+
+	// Serve the request
+	server.router.ServeHTTP(w, req)
+
+	// Assert that the status code was set to 500 Internal Server Error
+	assert.Equal(t, http.StatusInternalServerError, w.statusCode)
+}
+
+// mockResponseWriter is a mock implementation of http.ResponseWriter that can simulate write errors
+type mockResponseWriter struct {
+	header     http.Header
+	statusCode int
+	writeError bool
+}
+
+func (m *mockResponseWriter) Header() http.Header {
+	return m.header
+}
+
+func (m *mockResponseWriter) Write(b []byte) (int, error) {
+	if m.writeError {
+		return 0, fmt.Errorf("simulated write error")
+	}
+	return len(b), nil
+}
+
+func (m *mockResponseWriter) WriteHeader(statusCode int) {
+	m.statusCode = statusCode
 }
 
 // TestStartServer tests the Start function
 func TestStartServer(t *testing.T) {
+	// Skip this test in normal test runs to avoid hanging
+	t.Skip("Skipping test that starts a real server")
+
 	// Create a minimal config
 	cfg := &config.Config{
 		Server: config.ServerConfig{
@@ -548,6 +627,9 @@ func TestStartServer(t *testing.T) {
 
 // TestStartServerWithListener tests the Start function with a custom listener
 func TestStartServerWithListener(t *testing.T) {
+	// Skip this test in normal test runs to avoid hanging
+	t.Skip("Skipping test that starts a real server")
+
 	// Create a minimal config
 	cfg := &config.Config{
 		Server: config.ServerConfig{
@@ -589,6 +671,58 @@ func TestStartServerWithListener(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// TestStartWithoutBlocking tests the Start function without actually starting the server
+func TestStartWithoutBlocking(t *testing.T) {
+	// Create a minimal config
+	cfg := &config.Config{
+		Server: config.ServerConfig{
+			Host: "localhost",
+			Port: 8080,
+		},
+		Endpoints: []config.EndpointConfig{
+			{
+				Path: "/webhook",
+				Destinations: []config.DestinationConfig{
+					{
+						URL:     "http://example.com",
+						Method:  "POST",
+						Timeout: 5 * time.Second,
+					},
+				},
+			},
+		},
+	}
+
+	// Create a logger
+	log := logrus.New()
+	log.SetOutput(io.Discard) // Silence logs during tests
+
+	// Create a new server
+	server := NewServer(cfg, log)
+
+	// Create a mock server function
+	var capturedAddr string
+	var capturedHandler http.Handler
+	mockServerFunc := func(addr string, handler http.Handler) error {
+		capturedAddr = addr
+		capturedHandler = handler
+		return nil // Return nil to simulate successful server start
+	}
+
+	// Call StartWithServerFunc
+	err := server.StartWithServerFunc(mockServerFunc)
+
+	// Verify that no error was returned
+	assert.NoError(t, err)
+
+	// Verify that the server function was called with the correct parameters
+	assert.Equal(t, "localhost:8080", capturedAddr)
+	assert.Equal(t, server.router, capturedHandler)
+
+	// Verify that all endpoints were registered
+	assert.Contains(t, server.proxyHandlers, "/webhook")
+}
+
 // MockReadCloser is a mock for io.ReadCloser that returns an error on Read
 type MockReadCloser struct {
 	io.Reader
@@ -602,23 +736,129 @@ func (m MockReadCloser) Read(_ []byte) (n int, err error) {
 	return 0, errors.New("mock read error")
 }
 
-// MockResponseWriter is a mock implementation of http.ResponseWriter
-type MockResponseWriter struct {
-	header     http.Header
-	writeError error
-}
+// TestRegisterMetricsResetEndpointWriteError tests the metrics reset endpoint with a write error
+func TestRegisterMetricsResetEndpointWriteError(t *testing.T) {
+	// Create a minimal server
+	cfg := &config.Config{}
+	log := logrus.New()
+	log.SetOutput(io.Discard) // Silence logs during tests
+	server := NewServer(cfg, log)
 
-func (m *MockResponseWriter) Header() http.Header {
-	return m.header
-}
-
-func (m *MockResponseWriter) Write(b []byte) (int, error) {
-	if m.writeError != nil {
-		return 0, m.writeError
+	// Create a real proxy handler
+	destinations := []config.DestinationConfig{
+		{
+			URL:     "http://example.com",
+			Method:  "POST",
+			Timeout: 5 * time.Second,
+		},
 	}
-	return len(b), nil
+	handler := proxy.NewProxyHandler(destinations, log)
+
+	// Add the handler to the server
+	server.proxyHandlers["/test"] = handler
+
+	// Register the metrics endpoint
+	server.registerMetricsEndpoint()
+
+	// Create a test request for metrics reset
+	req := httptest.NewRequest(http.MethodPost, "/metrics/reset", nil)
+	w := &mockResponseWriter{
+		header:     http.Header{},
+		statusCode: http.StatusOK,
+		writeError: true, // Simulate a write error
+	}
+
+	// Serve the request
+	server.router.ServeHTTP(w, req)
+
+	// Assert that the status code was set to 200 OK (the error is logged but doesn't change the status)
+	assert.Equal(t, http.StatusOK, w.statusCode)
 }
 
-func (m *MockResponseWriter) WriteHeader(_ int) {
-	// Do nothing
+// TestStartWithError tests the Start function when the server function returns an error
+func TestStartWithError(t *testing.T) {
+	// Create a minimal config
+	cfg := &config.Config{
+		Server: config.ServerConfig{
+			Host: "localhost",
+			Port: 8080,
+		},
+	}
+
+	// Create a logger
+	log := logrus.New()
+	log.SetOutput(io.Discard) // Silence logs during tests
+
+	// Create a new server
+	server := NewServer(cfg, log)
+
+	// Create a mock server function that returns an error
+	expectedError := errors.New("failed to start server")
+	mockServerFunc := func(_ string, _ http.Handler) error {
+		return expectedError
+	}
+
+	// Call StartWithServerFunc
+	err := server.StartWithServerFunc(mockServerFunc)
+
+	// Verify that the expected error was returned
+	assert.Equal(t, expectedError, err)
+}
+
+// TestStart tests the Start function with the default HTTP server function
+func TestStart(t *testing.T) {
+	// Create a minimal config
+	cfg := &config.Config{
+		Server: config.ServerConfig{
+			Host: "localhost",
+			Port: 8080,
+		},
+		Endpoints: []config.EndpointConfig{
+			{
+				Path: "/webhook",
+				Destinations: []config.DestinationConfig{
+					{
+						URL:     "http://example.com",
+						Method:  "POST",
+						Timeout: 5 * time.Second,
+					},
+				},
+			},
+		},
+	}
+
+	// Create a logger
+	log := logrus.New()
+	log.SetOutput(io.Discard) // Silence logs during tests
+
+	// Create a new server
+	server := NewServer(cfg, log)
+
+	// Save the original DefaultHTTPServerFunc and restore it after the test
+	originalFunc := DefaultHTTPServerFunc
+	defer func() {
+		DefaultHTTPServerFunc = originalFunc
+	}()
+
+	// Replace DefaultHTTPServerFunc with a mock
+	var capturedAddr string
+	var capturedHandler http.Handler
+	DefaultHTTPServerFunc = func(addr string, handler http.Handler) error {
+		capturedAddr = addr
+		capturedHandler = handler
+		return nil
+	}
+
+	// Call Start
+	err := server.Start()
+
+	// Verify that no error was returned
+	assert.NoError(t, err)
+
+	// Verify that DefaultHTTPServerFunc was called with the correct parameters
+	assert.Equal(t, "localhost:8080", capturedAddr)
+	assert.Equal(t, server.router, capturedHandler)
+
+	// Verify that all endpoints were registered
+	assert.Contains(t, server.proxyHandlers, "/webhook")
 }

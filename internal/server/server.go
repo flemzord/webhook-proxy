@@ -24,6 +24,12 @@ type Server struct {
 	version       string
 }
 
+// HTTPServerFunc is a function type that matches http.ListenAndServe
+type HTTPServerFunc func(addr string, handler http.Handler) error
+
+// DefaultHTTPServerFunc is the default implementation using http.ListenAndServe
+var DefaultHTTPServerFunc HTTPServerFunc = http.ListenAndServe
+
 // NewServer creates a new HTTP server
 func NewServer(cfg *config.Config, log *logrus.Logger) *Server {
 	router := chi.NewRouter()
@@ -62,6 +68,11 @@ func NewServer(cfg *config.Config, log *logrus.Logger) *Server {
 
 // Start starts the HTTP server
 func (s *Server) Start() error {
+	return s.StartWithServerFunc(DefaultHTTPServerFunc)
+}
+
+// StartWithServerFunc starts the HTTP server using the provided server function
+func (s *Server) StartWithServerFunc(serverFunc HTTPServerFunc) error {
 	// Register routes for each endpoint
 	for _, endpoint := range s.config.Endpoints {
 		s.registerEndpoint(endpoint)
@@ -79,7 +90,7 @@ func (s *Server) Start() error {
 		"address": addr,
 	}).Info("Starting HTTP server")
 
-	return http.ListenAndServe(addr, s.router)
+	return serverFunc(addr, s.router)
 }
 
 // registerEndpoint registers a webhook endpoint
