@@ -1,4 +1,4 @@
-.PHONY: all build clean test lint lint-fix help release release-snapshot
+.PHONY: all build clean test lint lint-fix help release release-snapshot coverage
 
 # Default target
 all: lint test build
@@ -13,16 +13,30 @@ clean:
 	@echo "Cleaning build artifacts..."
 	@rm -f webhook-proxy
 	@rm -rf dist/
+	@rm -f coverage.out
+	@rm -f coverage.html
 
 # Run tests
 test:
 	@echo "Running tests..."
 	@go test -v ./...
 
-# Run linter
+# Generate coverage report
+coverage:
+	@echo "Generating coverage report..."
+	@go test -coverprofile=coverage.out ./...
+	@go tool cover -html=coverage.out -o coverage.html
+	@go tool cover -func=coverage.out
+	@echo "Coverage report generated: coverage.html"
+
+# Run linter and check test coverage
 lint:
 	@echo "Running linter..."
 	@golangci-lint run ./...
+	@echo "Checking test coverage..."
+	@go test -coverprofile=coverage.out ./...
+	@go tool cover -func=coverage.out | grep total | awk '{print "Total coverage: " $$3}'
+	@rm -f coverage.out
 
 # Fix linting issues automatically where possible
 lint-fix:
@@ -52,7 +66,8 @@ help:
 	@echo "  build           - Build the application"
 	@echo "  clean           - Remove build artifacts"
 	@echo "  test            - Run tests"
-	@echo "  lint            - Run linter"
+	@echo "  coverage        - Generate detailed coverage report"
+	@echo "  lint            - Run linter and check test coverage"
 	@echo "  lint-fix        - Fix linting issues automatically where possible"
 	@echo "  dev-deps        - Install development dependencies"
 	@echo "  release         - Create a release with GoReleaser"
