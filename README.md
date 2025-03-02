@@ -9,6 +9,9 @@ Un service proxy pour recevoir des webhooks et les transférer à plusieurs dest
 - Journalisation détaillée des requêtes et des réponses
 - Configuration via fichier YAML ou variables d'environnement
 - Validation de la configuration
+- Mécanisme de retry pour les destinations en échec
+- Métriques pour surveiller les performances
+- Endpoints de santé et de métriques
 
 ## Installation
 
@@ -81,6 +84,71 @@ Vous pouvez également configurer le service à l'aide de variables d'environnem
    ```
 
 3. Le service transférera la requête à toutes les destinations configurées pour cet endpoint.
+
+## Endpoints système
+
+En plus des endpoints configurés pour les webhooks, le service expose les endpoints système suivants :
+
+### Métriques
+
+- **GET /metrics** : Renvoie les métriques du service au format JSON, incluant :
+  - Nombre total de requêtes
+  - Nombre de requêtes réussies
+  - Nombre de requêtes échouées
+  - Nombre de retries
+  - Taux de succès
+  - Métriques par destination
+
+- **POST /metrics/reset** : Réinitialise toutes les métriques
+
+### Santé
+
+- **GET /health** : Renvoie l'état de santé du service
+
+Exemple de réponse de l'endpoint `/metrics` :
+```json
+{
+  "global": {
+    "total_requests": 42,
+    "successful_requests": 40,
+    "failed_requests": 2,
+    "retries": 1,
+    "success_rate": 95.23
+  },
+  "endpoints": {
+    "/webhook/github": {
+      "total_requests": 42,
+      "successful_requests": 40,
+      "failed_requests": 2,
+      "retries": 1,
+      "avg_response_time_ms": 125.5,
+      "status_codes": {
+        "200": 40,
+        "500": 2
+      },
+      "destinations": {
+        "https://example.com/github-webhook": {
+          "total_requests": 21,
+          "successful_requests": 20,
+          "failed_requests": 1,
+          "retries": 0,
+          "avg_response_time_ms": 100.2
+        },
+        "https://backup-service.example.com/github-events": {
+          "total_requests": 21,
+          "successful_requests": 20,
+          "failed_requests": 1,
+          "retries": 1,
+          "avg_response_time_ms": 150.8,
+          "last_error": "connection timeout",
+          "last_error_time": "2023-01-01T12:00:00Z"
+        }
+      }
+    }
+  },
+  "timestamp": "2023-01-01T12:30:00Z"
+}
+```
 
 ## Développement
 

@@ -59,12 +59,13 @@ endpoints:
 - [x] Ajouter des tests unitaires pour la configuration
 - [x] Créer un fichier d'exemple de configuration
 
-### Phase 3: Amélioration du proxy et gestion des erreurs
-- [ ] Ajouter un mécanisme de retry pour les destinations en échec
-- [ ] Implémenter la gestion des timeouts
-- [ ] Ajouter des métriques pour surveiller les performances
-- [ ] Améliorer la journalisation des erreurs
-- [ ] Ajouter des tests unitaires pour le proxy
+### Phase 3: Amélioration du proxy et gestion des erreurs ✅
+- [x] Ajouter un mécanisme de retry pour les destinations en échec
+- [x] Implémenter la gestion des timeouts
+- [x] Ajouter des métriques pour surveiller les performances
+- [x] Améliorer la journalisation des erreurs
+- [x] Ajouter des tests unitaires pour le proxy
+- [x] Ajouter des endpoints pour les métriques et la santé
 
 ### Phase 4: Fonctionnalités avancées
 - [ ] Ajouter la possibilité de transformer les webhooks avant de les transférer

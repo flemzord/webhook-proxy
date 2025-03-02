@@ -1,7 +1,9 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -15,9 +17,10 @@ import (
 
 // Server represents the HTTP server
 type Server struct {
-	config *config.Config
-	router *chi.Mux
-	log    *logrus.Logger
+	config        *config.Config
+	router        *chi.Mux
+	log           *logrus.Logger
+	proxyHandlers map[string]*proxy.ProxyHandler
 }
 
 // NewServer creates a new HTTP server
@@ -48,9 +51,10 @@ func NewServer(cfg *config.Config, log *logrus.Logger) *Server {
 	})
 
 	return &Server{
-		config: cfg,
-		router: router,
-		log:    log,
+		config:        cfg,
+		router:        router,
+		log:           log,
+		proxyHandlers: make(map[string]*proxy.ProxyHandler),
 	}
 }
 
@@ -60,6 +64,12 @@ func (s *Server) Start() error {
 	for _, endpoint := range s.config.Endpoints {
 		s.registerEndpoint(endpoint)
 	}
+
+	// Register metrics endpoint
+	s.registerMetricsEndpoint()
+
+	// Register health check endpoint
+	s.registerHealthCheckEndpoint()
 
 	// Start server
 	addr := fmt.Sprintf("%s:%d", s.config.Server.Host, s.config.Server.Port)
@@ -79,6 +89,9 @@ func (s *Server) registerEndpoint(endpoint config.EndpointConfig) {
 
 	// Create a proxy handler for this endpoint
 	proxyHandler := proxy.NewProxyHandler(endpoint.Destinations, s.log)
+
+	// Store the proxy handler for metrics access
+	s.proxyHandlers[endpoint.Path] = proxyHandler
 
 	// Register the endpoint
 	s.router.Post(endpoint.Path, func(w http.ResponseWriter, r *http.Request) {
@@ -114,14 +127,96 @@ func (s *Server) registerEndpoint(endpoint config.EndpointConfig) {
 	})
 }
 
+// registerMetricsEndpoint registers the metrics endpoint
+func (s *Server) registerMetricsEndpoint() {
+	s.router.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		// Collect metrics from all proxy handlers
+		metrics := make(map[string]interface{})
+
+		// Add global metrics
+		var totalRequests int64
+		var successfulRequests int64
+		var failedRequests int64
+		var retries int64
+
+		// Collect metrics from each proxy handler
+		endpointMetrics := make(map[string]interface{})
+		for path, handler := range s.proxyHandlers {
+			handlerMetrics := handler.GetMetrics()
+			endpointMetrics[path] = handlerMetrics
+
+			// Aggregate global metrics
+			if val, ok := handlerMetrics["total_requests"].(int64); ok {
+				totalRequests += val
+			}
+			if val, ok := handlerMetrics["successful_requests"].(int64); ok {
+				successfulRequests += val
+			}
+			if val, ok := handlerMetrics["failed_requests"].(int64); ok {
+				failedRequests += val
+			}
+			if val, ok := handlerMetrics["retries"].(int64); ok {
+				retries += val
+			}
+		}
+
+		// Build the complete metrics response
+		metrics["global"] = map[string]interface{}{
+			"total_requests":      totalRequests,
+			"successful_requests": successfulRequests,
+			"failed_requests":     failedRequests,
+			"retries":             retries,
+			"success_rate":        calculateSuccessRate(successfulRequests, totalRequests),
+		}
+		metrics["endpoints"] = endpointMetrics
+		metrics["timestamp"] = time.Now().Format(time.RFC3339)
+
+		// Return metrics as JSON
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(metrics)
+	})
+
+	// Add endpoint to reset metrics
+	s.router.Post("/metrics/reset", func(w http.ResponseWriter, r *http.Request) {
+		// Reset metrics for all proxy handlers
+		for _, handler := range s.proxyHandlers {
+			handler.ResetMetrics()
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok","message":"Metrics reset successfully"}`))
+	})
+}
+
+// registerHealthCheckEndpoint registers the health check endpoint
+func (s *Server) registerHealthCheckEndpoint() {
+	s.router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		health := map[string]interface{}{
+			"status":    "ok",
+			"timestamp": time.Now().Format(time.RFC3339),
+			"version":   "1.0.0", // TODO: Get from build info
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(health)
+	})
+}
+
+// calculateSuccessRate calculates the success rate as a percentage
+func calculateSuccessRate(successful, total int64) float64 {
+	if total == 0 {
+		return 0
+	}
+	return float64(successful) / float64(total) * 100
+}
+
 // readRequestBody reads the request body
 func readRequestBody(r *http.Request) ([]byte, error) {
 	defer r.Body.Close()
 
 	// Read the body
-	body := make([]byte, r.ContentLength)
-	_, err := r.Body.Read(body)
-	if err != nil && err.Error() != "EOF" {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
 		return nil, err
 	}
 
