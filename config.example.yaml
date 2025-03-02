@@ -12,6 +12,12 @@ logging:
   output: "stdout" # Output destination: stdout, stderr, or file
   file_path: ""    # Path to log file (required if output is "file")
 
+# Telemetry configuration
+telemetry:
+  enabled: true           # Enable or disable telemetry
+  exporter_type: "stdout" # Exporter type: stdout, otlp, etc.
+  endpoint: ""            # Endpoint for OTLP exporter (if used)
+
 # Endpoints configuration
 endpoints:
   # Example endpoint for GitHub webhooks

@@ -46,17 +46,74 @@ func TestNewServer(t *testing.T) {
 }
 
 func TestSetVersion(t *testing.T) {
-	// Create a minimal server
-	server := &Server{
-		version: "1.0.0",
-	}
+	// Test case 1: Basic version update without tracer
+	t.Run("Basic version update", func(t *testing.T) {
+		server := &Server{
+			version: "1.0.0",
+		}
 
-	// Set a new version
-	newVersion := "2.0.0"
-	server.SetVersion(newVersion)
+		// Set a new version
+		newVersion := "2.0.0"
+		server.SetVersion(newVersion)
 
-	// Assert that the version was updated
-	assert.Equal(t, newVersion, server.version)
+		// Assert that the version was updated
+		assert.Equal(t, newVersion, server.version)
+	})
+
+	// Test case 2: Version update with tracer
+	t.Run("With tracer", func(t *testing.T) {
+		// Create a minimal config
+		cfg := &config.Config{
+			Telemetry: config.TelemetryConfig{
+				Enabled:      true,
+				ExporterType: "stdout",
+			},
+		}
+
+		log := logrus.New()
+		log.SetOutput(io.Discard) // Silence logs during tests
+
+		// Create a server with a tracer
+		server := NewServer(cfg, log)
+
+		// Initial version should be set
+		assert.Equal(t, "1.0.0", server.version)
+
+		// Set a new version
+		newVersion := "2.0.0"
+		server.SetVersion(newVersion)
+
+		// Assert that the version was updated
+		assert.Equal(t, newVersion, server.version)
+	})
+
+	// Test case 3: Error when creating new tracer
+	t.Run("Error creating tracer", func(t *testing.T) {
+		// Create a minimal config with invalid exporter type to force an error
+		cfg := &config.Config{
+			Telemetry: config.TelemetryConfig{
+				Enabled:      true,
+				ExporterType: "invalid", // This should cause an error
+				Endpoint:     "invalid://endpoint",
+			},
+		}
+
+		log := logrus.New()
+		log.SetOutput(io.Discard) // Silence logs during tests
+
+		// Create a server with a tracer
+		server := NewServer(cfg, log)
+
+		// Initial version should be set
+		assert.Equal(t, "1.0.0", server.version)
+
+		// Set a new version
+		newVersion := "2.0.0"
+		server.SetVersion(newVersion)
+
+		// Assert that the version was updated even if tracer update failed
+		assert.Equal(t, newVersion, server.version)
+	})
 }
 
 func TestCalculateSuccessRate(t *testing.T) {
@@ -229,7 +286,7 @@ func TestRegisterEndpoint(t *testing.T) {
 	defer resp.Body.Close()
 
 	// Assert status code (should be 200 OK as we return immediately)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 }
 
 func TestRegisterMetricsEndpoint(t *testing.T) {
@@ -339,7 +396,7 @@ func TestStartServerSetup(t *testing.T) {
 	// Test that the webhook endpoint responds correctly
 	resp, err := http.Post(testServer.URL+"/webhook", "application/json", bytes.NewReader([]byte(`{"test":"data"}`)))
 	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 	resp.Body.Close()
 
 	// Test that the metrics endpoint responds correctly

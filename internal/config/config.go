@@ -24,6 +24,7 @@ const (
 type Config struct {
 	Server    ServerConfig     `yaml:"server"`
 	Logging   LoggingConfig    `yaml:"logging"`
+	Telemetry TelemetryConfig  `yaml:"telemetry"`
 	Endpoints []EndpointConfig `yaml:"endpoints"`
 }
 
@@ -39,6 +40,13 @@ type LoggingConfig struct {
 	Format   string `yaml:"format"`
 	Output   string `yaml:"output"`
 	FilePath string `yaml:"file_path"`
+}
+
+// TelemetryConfig represents the telemetry configuration
+type TelemetryConfig struct {
+	Enabled      bool   `yaml:"enabled"`
+	ExporterType string `yaml:"exporter_type"`
+	Endpoint     string `yaml:"endpoint"`
 }
 
 // EndpointConfig represents an endpoint configuration
@@ -108,6 +116,11 @@ func setDefaultValues(config *Config) {
 		config.Logging.Output = DefaultLogOutput
 	}
 
+	// Telemetry defaults
+	if config.Telemetry.ExporterType == "" {
+		config.Telemetry.ExporterType = "stdout"
+	}
+
 	// Endpoint defaults
 	for i := range config.Endpoints {
 		for j := range config.Endpoints[i].Destinations {
@@ -162,8 +175,16 @@ func applyEnvironmentOverrides(config *Config) {
 		config.Logging.FilePath = filePath
 	}
 
-	// Endpoints cannot be easily overridden with environment variables
-	// due to their complex structure. Use the YAML file for endpoints.
+	// Telemetry overrides
+	if enabled, exists := os.LookupEnv("WEBHOOK_PROXY_TELEMETRY_ENABLED"); exists {
+		config.Telemetry.Enabled = enabled == "true" || enabled == "1" || enabled == "yes"
+	}
+	if exporterType, exists := os.LookupEnv("WEBHOOK_PROXY_TELEMETRY_EXPORTER_TYPE"); exists {
+		config.Telemetry.ExporterType = exporterType
+	}
+	if endpoint, exists := os.LookupEnv("WEBHOOK_PROXY_TELEMETRY_ENDPOINT"); exists {
+		config.Telemetry.Endpoint = endpoint
+	}
 }
 
 // validateConfig validates the configuration
@@ -175,6 +196,11 @@ func validateConfig(config *Config) error {
 
 	// Validate logging configuration
 	if err := validateLoggingConfig(&config.Logging); err != nil {
+		return err
+	}
+
+	// Validate telemetry configuration
+	if err := validateTelemetryConfig(&config.Telemetry); err != nil {
 		return err
 	}
 
@@ -219,6 +245,24 @@ func validateLoggingConfig(logging *LoggingConfig) error {
 
 	if logging.Output == "file" && logging.FilePath == "" {
 		return fmt.Errorf("file_path is required when output is file")
+	}
+
+	return nil
+}
+
+// validateTelemetryConfig validates the telemetry configuration
+func validateTelemetryConfig(telemetry *TelemetryConfig) error {
+	if !telemetry.Enabled {
+		return nil
+	}
+
+	if telemetry.ExporterType == "" {
+		return fmt.Errorf("exporter_type is required when telemetry is enabled")
+	}
+
+	// Only require endpoint for certain exporter types
+	if telemetry.ExporterType != "stdout" && telemetry.Endpoint == "" {
+		return fmt.Errorf("endpoint is required when telemetry is enabled with exporter_type %s", telemetry.ExporterType)
 	}
 
 	return nil
