@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "webhook-proxy.fullname" . }}-test-endpoints"
+  labels:
+    {{- include "webhook-proxy.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: test-endpoints
+      image: bitnami/kubectl
+      command: ['sh', '-c']
+      args:
+        - |
+          echo "Testing endpoints configuration for {{ include "webhook-proxy.fullname" . }}"
+          
+          # Get the ConfigMap
+          CONFIG=$(kubectl get configmap {{ include "webhook-proxy.fullname" . }}-config -o jsonpath='{.data.config\.yaml}')
+          
+          # Check if endpoints section exists
+          if echo "$CONFIG" | grep -q "endpoints:"; then
+            echo "Endpoints section found"
+          else
+            echo "Endpoints section not found"
+            exit 1
+          fi
+          
+          # If endpoints are defined, validate their structure
+          {{- if .Values.config.endpoints }}
+          # Count the number of endpoints
+          ENDPOINT_COUNT=$(echo "$CONFIG" | grep -c "path:")
+          if [ "$ENDPOINT_COUNT" -ge {{ len .Values.config.endpoints }} ]; then
+            echo "Found $ENDPOINT_COUNT endpoints, expected at least {{ len .Values.config.endpoints }}"
+          else
+            echo "Found $ENDPOINT_COUNT endpoints, expected at least {{ len .Values.config.endpoints }}"
+            exit 1
+          fi
+          
+          # Check for specific endpoints
+          {{- range .Values.config.endpoints }}
+          if echo "$CONFIG" | grep -q "path: {{ .path }}"; then
+            echo "Endpoint {{ .path }} found"
+          else
+            echo "Endpoint {{ .path }} not found"
+            exit 1
+          fi
+          {{- end }}
+          {{- end }}
+          
+          echo "Endpoints configuration validation successful"
+          exit 0
+  serviceAccountName: {{ include "webhook-proxy.serviceAccountName" . }}
+  restartPolicy: Never 

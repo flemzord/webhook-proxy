@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "webhook-proxy.fullname" . }}-test-default-values"
+  labels:
+    {{- include "webhook-proxy.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: test-default-values
+      image: bitnami/kubectl
+      command: ['sh', '-c']
+      args:
+        - |
+          echo "Testing default values for {{ include "webhook-proxy.fullname" . }}"
+          
+          # Check deployment replicas
+          {{- if not .Values.autoscaling.enabled }}
+          REPLICAS=$(kubectl get deployment {{ include "webhook-proxy.fullname" . }} -o jsonpath='{.spec.replicas}')
+          if [ "$REPLICAS" = "{{ .Values.replicaCount }}" ]; then
+            echo "Deployment replicas match: $REPLICAS"
+          else
+            echo "Deployment replicas mismatch: expected {{ .Values.replicaCount }}, got $REPLICAS"
+            exit 1
+          fi
+          {{- end }}
+          
+          # Check service type
+          SERVICE_TYPE=$(kubectl get service {{ include "webhook-proxy.fullname" . }} -o jsonpath='{.spec.type}')
+          if [ "$SERVICE_TYPE" = "{{ .Values.service.type }}" ]; then
+            echo "Service type matches: $SERVICE_TYPE"
+          else
+            echo "Service type mismatch: expected {{ .Values.service.type }}, got $SERVICE_TYPE"
+            exit 1
+          fi
+          
+          # Check service port
+          SERVICE_PORT=$(kubectl get service {{ include "webhook-proxy.fullname" . }} -o jsonpath='{.spec.ports[0].port}')
+          if [ "$SERVICE_PORT" = "{{ .Values.service.port }}" ]; then
+            echo "Service port matches: $SERVICE_PORT"
+          else
+            echo "Service port mismatch: expected {{ .Values.service.port }}, got $SERVICE_PORT"
+            exit 1
+          fi
+          
+          # Check image
+          IMAGE=$(kubectl get deployment {{ include "webhook-proxy.fullname" . }} -o jsonpath='{.spec.template.spec.containers[0].image}')
+          EXPECTED_IMAGE="{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          if [ "$IMAGE" = "$EXPECTED_IMAGE" ]; then
+            echo "Image matches: $IMAGE"
+          else
+            echo "Image mismatch: expected $EXPECTED_IMAGE, got $IMAGE"
+            exit 1
+          fi
+          
+          echo "Default values validation successful"
+          exit 0
+  serviceAccountName: {{ include "webhook-proxy.serviceAccountName" . }}
+  restartPolicy: Never 

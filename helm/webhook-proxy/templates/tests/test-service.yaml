@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "webhook-proxy.fullname" . }}-test-service"
+  labels:
+    {{- include "webhook-proxy.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: test-service
+      image: busybox
+      command: ['sh', '-c']
+      args:
+        - |
+          echo "Testing service {{ include "webhook-proxy.fullname" . }}"
+          if wget -T 5 -q {{ include "webhook-proxy.fullname" . }}:{{ .Values.service.port }}/health -O /dev/null; then
+            echo "Service is accessible"
+            exit 0
+          else
+            echo "Service is not accessible"
+            exit 1
+          fi
+  restartPolicy: Never 

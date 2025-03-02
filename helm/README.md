@@ -1,82 +1,82 @@
-# Helm Charts pour Webhook Proxy
+# Helm Charts for Webhook Proxy
 
-Ce répertoire contient les charts Helm pour déployer Webhook Proxy sur Kubernetes.
+This directory contains Helm charts for deploying Webhook Proxy on Kubernetes.
 
 ## Structure
 
 ```
 helm/
-├── README.md                 # Ce fichier
-└── webhook-proxy/            # Chart Helm pour Webhook Proxy
-    ├── Chart.yaml            # Métadonnées du chart
-    ├── values.yaml           # Valeurs par défaut
-    ├── templates/            # Templates Kubernetes
-    │   ├── _helpers.tpl      # Fonctions d'aide
-    │   ├── deployment.yaml   # Déploiement
+├── README.md                 # This file
+└── webhook-proxy/            # Helm Chart for Webhook Proxy
+    ├── Chart.yaml            # Chart metadata
+    ├── values.yaml           # Default values
+    ├── templates/            # Kubernetes templates
+    │   ├── _helpers.tpl      # Helper functions
+    │   ├── deployment.yaml   # Deployment
     │   ├── service.yaml      # Service
     │   ├── ingress.yaml      # Ingress
     │   ├── configmap.yaml    # ConfigMap
-    │   ├── serviceaccount.yaml # Compte de service
+    │   ├── serviceaccount.yaml # Service account
     │   ├── hpa.yaml          # HorizontalPodAutoscaler
-    │   └── NOTES.txt         # Notes d'installation
-    ├── examples/             # Exemples de configuration
-    │   ├── values-development.yaml # Configuration pour développement
-    │   └── values-production.yaml  # Configuration pour production
-    └── .helmignore           # Fichiers à ignorer lors du packaging
+    │   └── NOTES.txt         # Installation notes
+    ├── examples/             # Configuration examples
+    │   ├── values-development.yaml # Development configuration
+    │   └── values-production.yaml  # Production configuration
+    └── .helmignore           # Files to ignore when packaging
 ```
 
 ## Installation
 
-### Prérequis
+### Prerequisites
 
 - Kubernetes 1.12+
 - Helm 3.0+
 
-### Installation du chart
+### Chart Installation
 
-Pour installer le chart avec le nom de release `my-webhook-proxy` :
+To install the chart with the release name `my-webhook-proxy`:
 
 ```bash
 helm install my-webhook-proxy ./webhook-proxy
 ```
 
-### Installation avec des valeurs personnalisées
+### Installation with Custom Values
 
-Pour installer le chart avec des valeurs personnalisées :
+To install the chart with custom values:
 
 ```bash
 helm install my-webhook-proxy ./webhook-proxy -f webhook-proxy/examples/values-production.yaml
 ```
 
-Ou en spécifiant directement les valeurs :
+Or by directly specifying values:
 
 ```bash
 helm install my-webhook-proxy ./webhook-proxy --set replicaCount=2
 ```
 
-### Mise à jour du chart
+### Chart Update
 
-Pour mettre à jour la configuration :
+To update the configuration:
 
 ```bash
 helm upgrade my-webhook-proxy ./webhook-proxy -f webhook-proxy/examples/values-production.yaml
 ```
 
-### Désinstallation du chart
+### Chart Uninstallation
 
-Pour désinstaller le chart :
+To uninstall the chart:
 
 ```bash
 helm uninstall my-webhook-proxy
 ```
 
-## Exemples de configuration
+## Configuration Examples
 
-Le répertoire `webhook-proxy/examples/` contient des exemples de configuration pour différents environnements :
+The `webhook-proxy/examples/` directory contains configuration examples for different environments:
 
-- `values-development.yaml` : Configuration pour un environnement de développement
-- `values-production.yaml` : Configuration pour un environnement de production
+- `values-development.yaml`: Configuration for a development environment
+- `values-production.yaml`: Configuration for a production environment
 
 ## Documentation
 
-Pour plus d'informations sur la configuration du chart, consultez le [README du chart](webhook-proxy/README.md). 
+For more information on chart configuration, see the [chart README](webhook-proxy/README.md). 

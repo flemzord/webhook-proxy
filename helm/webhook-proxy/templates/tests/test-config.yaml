@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "webhook-proxy.fullname" . }}-test-config"
+  labels:
+    {{- include "webhook-proxy.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: test-config
+      image: bitnami/kubectl
+      command: ['sh', '-c']
+      args:
+        - |
+          echo "Testing ConfigMap {{ include "webhook-proxy.fullname" . }}-config"
+          
+          # Get the ConfigMap
+          CONFIG=$(kubectl get configmap {{ include "webhook-proxy.fullname" . }}-config -o jsonpath='{.data.config\.yaml}')
+          
+          # Check if server configuration exists
+          if echo "$CONFIG" | grep -q "server:"; then
+            echo "Server configuration found"
+          else
+            echo "Server configuration not found"
+            exit 1
+          fi
+          
+          # Check if logging configuration exists
+          if echo "$CONFIG" | grep -q "logging:"; then
+            echo "Logging configuration found"
+          else
+            echo "Logging configuration not found"
+            exit 1
+          fi
+          
+          # Check if endpoints configuration exists
+          if echo "$CONFIG" | grep -q "endpoints:"; then
+            echo "Endpoints configuration found"
+          else
+            echo "Endpoints configuration not found"
+            exit 1
+          fi
+          
+          echo "ConfigMap validation successful"
+          exit 0
+  serviceAccountName: {{ include "webhook-proxy.serviceAccountName" . }}
+  restartPolicy: Never 
