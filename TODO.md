@@ -68,7 +68,7 @@ endpoints:
 - [x] Ajouter des endpoints pour les métriques et la santé
 
 ### Phase 4: Documentation et API
-- [ ] Créer un fichier OpenAPI pour documenter l'API
+- [ ] Créer un fichier openapi.yaml a la racine du repository pour documenter l'API
 
 ### Phase 5: Qualité du code et outillage
 - [ ] Ajouter golangci-lint pour le linting du code
