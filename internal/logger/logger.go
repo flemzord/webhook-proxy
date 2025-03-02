@@ -4,7 +4,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/flemzord/webhook-proxy/config"
+	"github.com/flemzord/webhook-proxy/internal/config"
 	"github.com/sirupsen/logrus"
 )
 

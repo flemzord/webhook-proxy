@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/flemzord/webhook-proxy/config"
+	"github.com/flemzord/webhook-proxy/internal/config"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )

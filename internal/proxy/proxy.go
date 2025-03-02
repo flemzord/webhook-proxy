@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/flemzord/webhook-proxy/config"
-	"github.com/flemzord/webhook-proxy/logger"
+	"github.com/flemzord/webhook-proxy/internal/config"
+	"github.com/flemzord/webhook-proxy/internal/logger"
 	"github.com/sirupsen/logrus"
 )
 

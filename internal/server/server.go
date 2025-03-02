@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/flemzord/webhook-proxy/config"
-	"github.com/flemzord/webhook-proxy/logger"
-	"github.com/flemzord/webhook-proxy/proxy"
+	"github.com/flemzord/webhook-proxy/internal/config"
+	"github.com/flemzord/webhook-proxy/internal/logger"
+	"github.com/flemzord/webhook-proxy/internal/proxy"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sirupsen/logrus"
