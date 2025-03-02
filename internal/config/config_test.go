@@ -593,6 +593,37 @@ func TestValidateConfig(t *testing.T) {
 			},
 			expectError: true,
 		},
+		{
+			name: "Invalid telemetry config",
+			config: Config{
+				Server: ServerConfig{
+					Port: 8080,
+					Host: "localhost",
+				},
+				Logging: LoggingConfig{
+					Level:  "info",
+					Format: "json",
+					Output: "stdout",
+				},
+				Telemetry: TelemetryConfig{
+					Enabled:      true,
+					ExporterType: "otlp", // Valid exporter type
+					Endpoint:     "",     // Missing endpoint for non-stdout exporter
+				},
+				Endpoints: []EndpointConfig{
+					{
+						Path: "/webhook",
+						Destinations: []DestinationConfig{
+							{
+								URL:    "http://example.com",
+								Method: "POST",
+							},
+						},
+					},
+				},
+			},
+			expectError: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -600,6 +631,69 @@ func TestValidateConfig(t *testing.T) {
 			err := validateConfig(&tt.config)
 			if (err != nil) != tt.expectError {
 				t.Errorf("validateConfig() error = %v, expectError %v", err, tt.expectError)
+			}
+		})
+	}
+}
+
+func TestValidateTelemetryConfig(t *testing.T) {
+	tests := []struct {
+		name      string
+		config    TelemetryConfig
+		expectErr bool
+	}{
+		{
+			name: "Disabled telemetry",
+			config: TelemetryConfig{
+				Enabled: false,
+			},
+			expectErr: false,
+		},
+		{
+			name: "Enabled with missing exporter_type",
+			config: TelemetryConfig{
+				Enabled:      true,
+				ExporterType: "",
+			},
+			expectErr: true,
+		},
+		{
+			name: "Enabled with stdout exporter and no endpoint",
+			config: TelemetryConfig{
+				Enabled:      true,
+				ExporterType: "stdout",
+				Endpoint:     "",
+			},
+			expectErr: false,
+		},
+		{
+			name: "Enabled with non-stdout exporter and missing endpoint",
+			config: TelemetryConfig{
+				Enabled:      true,
+				ExporterType: "otlp",
+				Endpoint:     "",
+			},
+			expectErr: true,
+		},
+		{
+			name: "Enabled with non-stdout exporter and valid endpoint",
+			config: TelemetryConfig{
+				Enabled:      true,
+				ExporterType: "otlp",
+				Endpoint:     "http://localhost:4317",
+			},
+			expectErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateTelemetryConfig(&tt.config)
+			if tt.expectErr && err == nil {
+				t.Errorf("Expected error but got nil")
+			}
+			if !tt.expectErr && err != nil {
+				t.Errorf("Expected no error but got: %v", err)
 			}
 		})
 	}
