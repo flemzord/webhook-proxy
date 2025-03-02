@@ -1,0 +1,193 @@
+openapi: 3.0.3
+info:
+  title: Webhook Proxy API
+  description: |
+    API for the webhook-proxy service that receives webhooks and forwards them to multiple configured destinations.
+    This service allows centralizing webhook reception and distributing them to different internal services.
+  version: 1.0.0
+  contact:
+    name: Webhook Proxy Support
+    url: https://github.com/flemzord/webhook-proxy
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+tags:
+  - name: webhooks
+    description: Endpoints for receiving webhooks
+  - name: system
+    description: System endpoints for monitoring and maintenance
+paths:
+  /webhook/{provider}:
+    post:
+      tags:
+        - webhooks
+      summary: Receive a webhook
+      description: |
+        Receives a webhook from a specific provider and forwards it to all configured destinations.
+        The exact path depends on the configuration in the config.yaml file.
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          description: The webhook provider (github, stripe, etc.)
+          schema:
+            type: string
+            example: github
+      requestBody:
+        description: Webhook content
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: The webhook content depends on the provider
+      responses:
+        '200':
+          description: Webhook received and processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  message:
+                    type: string
+                    example: Webhook processed successfully
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /metrics:
+    get:
+      tags:
+        - system
+      summary: Get metrics
+      description: Retrieves performance and usage metrics for the service
+      responses:
+        '200':
+          description: Metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  global:
+                    type: object
+                    properties:
+                      total_requests:
+                        type: integer
+                        format: int64
+                        example: 1000
+                      successful_requests:
+                        type: integer
+                        format: int64
+                        example: 950
+                      failed_requests:
+                        type: integer
+                        format: int64
+                        example: 50
+                      retries:
+                        type: integer
+                        format: int64
+                        example: 25
+                      success_rate:
+                        type: number
+                        format: float
+                        example: 95.0
+                  endpoints:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        total_requests:
+                          type: integer
+                          format: int64
+                          example: 500
+                        successful_requests:
+                          type: integer
+                          format: int64
+                          example: 480
+                        failed_requests:
+                          type: integer
+                          format: int64
+                          example: 20
+                        retries:
+                          type: integer
+                          format: int64
+                          example: 10
+                        success_rate:
+                          type: number
+                          format: float
+                          example: 96.0
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2023-01-01T12:00:00Z"
+  /metrics/reset:
+    post:
+      tags:
+        - system
+      summary: Reset metrics
+      description: Resets all collected metrics
+      responses:
+        '200':
+          description: Metrics reset successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  message:
+                    type: string
+                    example: Metrics reset successfully
+  /health:
+    get:
+      tags:
+        - system
+      summary: Check service health
+      description: Checks if the service is functioning properly
+      responses:
+        '200':
+          description: The service is functioning properly
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2023-01-01T12:00:00Z"
+                  version:
+                    type: string
+                    example: 1.0.0
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: An error occurred while processing the webhook
+        error_code:
+          type: string
+          example: internal_server_error 
