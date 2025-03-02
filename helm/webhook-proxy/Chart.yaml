@@ -1,0 +1,15 @@
+apiVersion: v2
+name: webhook-proxy
+description: A Helm chart for Webhook Proxy - A simple proxy for webhooks
+type: application
+version: 0.1.0
+appVersion: "latest"
+maintainers:
+  - name: "Webhook Proxy Team"
+keywords:
+  - webhook
+  - proxy
+  - kubernetes
+home: https://github.com/flemzord/webhook-proxy
+sources:
+  - https://github.com/flemzord/webhook-proxy 
