@@ -55,7 +55,7 @@ endpoints:
 - `utils/`: Package for utility functions
 
 ## External Dependencies
-- HTTP Framework: Echo or Gin
+- HTTP Framework: Chi
 - YAML Parsing: gopkg.in/yaml.v3
 - Structured Logging: zap or logrus
 - HTTP Client: standard or resty
@@ -63,9 +63,9 @@ endpoints:
 ## Development Plan
 
 ### Phase 1: Project Structure Setup
-- [ ] Initialize project structure
-- [ ] Configure dependencies
-- [ ] Create README.md with initial documentation
+- [x] Initialize project structure
+- [x] Configure dependencies
+- [x] Create README.md with initial documentation
 
 ### Phase 2: Configuration
 - [ ] Implement YAML configuration parser
