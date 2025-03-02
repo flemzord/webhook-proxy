@@ -5,6 +5,7 @@
 *.so
 *.dylib
 webhook-proxy
+!cmd/webhook-proxy/
 
 # Test binary, built with `go test -c`
 *.test
