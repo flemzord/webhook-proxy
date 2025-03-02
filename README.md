@@ -37,10 +37,10 @@ go build -o webhook-proxy ./cmd/webhook-proxy
 
 ```bash
 # Download the image
-docker pull flemzord/webhook-proxy:latest
+docker pull ghcr.io/flemzord/webhook-proxy:latest
 
 # Run the container with your configuration file
-docker run -v $(pwd)/config.yaml:/app/config/config.yaml -p 8080:8080 flemzord/webhook-proxy:latest
+docker run -v $(pwd)/config.yaml:/app/config/config.yaml -p 8080:8080 ghcr.io/flemzord/webhook-proxy:latest
 ```
 
 ## Configuration
