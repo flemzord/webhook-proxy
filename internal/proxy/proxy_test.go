@@ -273,12 +273,12 @@ func TestSendRequest(t *testing.T) {
 	assert.Greater(t, duration.Nanoseconds(), int64(0))
 
 	// Test case 2: Failed request - server error
-	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		// Return error
 		w.WriteHeader(http.StatusInternalServerError)
-		_, err := w.Write([]byte(`{"status":"error"}`))
-		if err != nil {
-			t.Fatalf("Failed to write response: %v", err)
+		_, writeErr := w.Write([]byte(`{"status":"error"}`))
+		if writeErr != nil {
+			t.Fatalf("Failed to write response: %v", writeErr)
 		}
 	}))
 	defer server2.Close()
@@ -326,7 +326,7 @@ func TestSendRequest(t *testing.T) {
 	}
 
 	// Send request
-	statusCode, respBody, duration, err = handler.sendRequest(client, destInvalidMethod, body, headers, false)
+	statusCode, respBody, _, err = handler.sendRequest(client, destInvalidMethod, body, headers, false)
 
 	// Verify response
 	assert.Error(t, err)
@@ -344,7 +344,7 @@ func (m MockReadCloser) Close() error {
 	return nil
 }
 
-func (m MockReadCloser) Read(p []byte) (n int, err error) {
+func (m MockReadCloser) Read(_ []byte) (n int, err error) {
 	return 0, errors.New("mock read error")
 }
 
@@ -355,9 +355,12 @@ func TestSendRequestReadBodyError(t *testing.T) {
 	logger.SetLevel(logrus.DebugLevel)
 
 	// Create a test server that returns a response
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`))
+		_, err := w.Write([]byte(`{"status":"ok"}`))
+		if err != nil {
+			t.Fatalf("Failed to write response: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -416,7 +419,7 @@ func TestForwardToDestination(t *testing.T) {
 	logger.SetLevel(logrus.DebugLevel)
 
 	// Test case 1: Successful forwarding
-	server1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		// Return success
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(`{"status":"ok"}`))
@@ -448,12 +451,12 @@ func TestForwardToDestination(t *testing.T) {
 	assert.Equal(t, int64(0), metrics["failed_requests"])
 
 	// Test case 2: Failed forwarding with retries
-	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		// Return error
 		w.WriteHeader(http.StatusInternalServerError)
-		_, err := w.Write([]byte(`{"status":"error"}`))
-		if err != nil {
-			t.Fatalf("Failed to write response: %v", err)
+		_, writeErr := w.Write([]byte(`{"status":"error"}`))
+		if writeErr != nil {
+			t.Fatalf("Failed to write response: %v", writeErr)
 		}
 	}))
 	defer server2.Close()

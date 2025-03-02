@@ -572,7 +572,11 @@ func TestStartServerWithListener(t *testing.T) {
 	defer listener.Close()
 
 	// Get the port that was assigned
-	port := listener.Addr().(*net.TCPAddr).Port
+	addr, ok := listener.Addr().(*net.TCPAddr)
+	if !ok {
+		t.Fatalf("Failed to get TCP address from listener")
+	}
+	port := addr.Port
 	cfg.Server.Port = port
 
 	// Close the listener to simulate a port already in use
@@ -594,7 +598,7 @@ func (m MockReadCloser) Close() error {
 	return nil
 }
 
-func (m MockReadCloser) Read(p []byte) (n int, err error) {
+func (m MockReadCloser) Read(_ []byte) (n int, err error) {
 	return 0, errors.New("mock read error")
 }
 
@@ -615,6 +619,6 @@ func (m *MockResponseWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func (m *MockResponseWriter) WriteHeader(statusCode int) {
+func (m *MockResponseWriter) WriteHeader(_ int) {
 	// Do nothing
 }

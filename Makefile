@@ -33,11 +33,7 @@ coverage:
 lint:
 	@echo "Running linter..."
 	@golangci-lint run ./...
-	@echo "Checking test coverage..."
-	@go test -coverprofile=coverage.out ./internal/...
-	@go tool cover -func=coverage.out | grep total | awk '{print "Total coverage: " $$3}'
-	@rm -f coverage.out
-
+	
 # Fix linting issues automatically where possible
 lint-fix:
 	@echo "Fixing linting issues..."
