@@ -1,0 +1,37 @@
+# Webhook Proxy - Example Configuration File
+
+# Server configuration
+server:
+  host: "0.0.0.0"  # Host to bind the server to
+  port: 8080       # Port to listen on
+
+# Logging configuration
+logging:
+  level: "info"    # Logging level: debug, info, warn, error
+  format: "json"   # Logging format: json or text
+  output: "stdout" # Output destination: stdout, stderr, or file
+  file_path: ""    # Path to log file (required if output is "file")
+
+# Endpoints configuration
+endpoints:
+  # Example endpoint for GitHub webhooks
+  - path: "/webhook/github"
+    destinations:
+      - url: "https://example.com/github-webhook"
+        headers:
+          X-Custom-Header: "custom-value"
+      - url: "https://backup-service.example.com/github-events"
+  
+  # Example endpoint for Stripe webhooks
+  - path: "/webhook/stripe"
+    destinations:
+      - url: "https://payment-processor.example.com/stripe-events"
+      - url: "https://analytics.example.com/payment-events"
+        headers:
+          Authorization: "Bearer your-token-here"
+          Content-Type: "application/json"
+
+  # Example endpoint for generic webhooks
+  - path: "/webhook/generic"
+    destinations:
+      - url: "https://internal-service.example.com/webhook" 

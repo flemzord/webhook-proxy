@@ -3,6 +3,10 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -47,6 +51,11 @@ type DestinationConfig struct {
 
 // LoadConfig loads the configuration from a YAML file
 func LoadConfig(path string) (*Config, error) {
+	// Check if file exists
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil, fmt.Errorf("config file does not exist: %s", path)
+	}
+
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
@@ -57,13 +66,31 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
+	// Apply environment variable overrides
+	applyEnvironmentOverrides(&config)
+
 	// Set default values
+	setDefaultValues(&config)
+
+	// Validate configuration
+	if err := validateConfig(&config); err != nil {
+		return nil, err
+	}
+
+	return &config, nil
+}
+
+// setDefaultValues sets default values for the configuration
+func setDefaultValues(config *Config) {
+	// Server defaults
 	if config.Server.Port == 0 {
 		config.Server.Port = 8080
 	}
 	if config.Server.Host == "" {
 		config.Server.Host = "0.0.0.0"
 	}
+
+	// Logging defaults
 	if config.Logging.Level == "" {
 		config.Logging.Level = "info"
 	}
@@ -74,12 +101,67 @@ func LoadConfig(path string) (*Config, error) {
 		config.Logging.Output = "stdout"
 	}
 
-	// Validate configuration
-	if err := validateConfig(&config); err != nil {
-		return nil, err
+	// Endpoint defaults
+	for i := range config.Endpoints {
+		for j := range config.Endpoints[i].Destinations {
+			dest := &config.Endpoints[i].Destinations[j]
+
+			// Default method is POST
+			if dest.Method == "" {
+				dest.Method = "POST"
+			}
+
+			// Default timeout is 5 seconds
+			if dest.Timeout == 0 {
+				dest.Timeout = 5 * time.Second
+			}
+
+			// Default retries is 0 (no retries)
+			if dest.Retries < 0 {
+				dest.Retries = 0
+			}
+
+			// Default retry delay is 1 second
+			if dest.RetryDelay == 0 && dest.Retries > 0 {
+				dest.RetryDelay = 1 * time.Second
+			}
+
+			// Initialize headers map if nil
+			if dest.Headers == nil {
+				dest.Headers = make(map[string]string)
+			}
+		}
+	}
+}
+
+// applyEnvironmentOverrides applies environment variable overrides to the configuration
+func applyEnvironmentOverrides(config *Config) {
+	// Server overrides
+	if port, exists := os.LookupEnv("WEBHOOK_PROXY_SERVER_PORT"); exists {
+		if p, err := strconv.Atoi(port); err == nil {
+			config.Server.Port = p
+		}
+	}
+	if host, exists := os.LookupEnv("WEBHOOK_PROXY_SERVER_HOST"); exists {
+		config.Server.Host = host
 	}
 
-	return &config, nil
+	// Logging overrides
+	if level, exists := os.LookupEnv("WEBHOOK_PROXY_LOG_LEVEL"); exists {
+		config.Logging.Level = level
+	}
+	if format, exists := os.LookupEnv("WEBHOOK_PROXY_LOG_FORMAT"); exists {
+		config.Logging.Format = format
+	}
+	if output, exists := os.LookupEnv("WEBHOOK_PROXY_LOG_OUTPUT"); exists {
+		config.Logging.Output = output
+	}
+	if filePath, exists := os.LookupEnv("WEBHOOK_PROXY_LOG_FILE_PATH"); exists {
+		config.Logging.FilePath = filePath
+	}
+
+	// Endpoints cannot be easily overridden with environment variables
+	// due to their complex structure. Use the YAML file for endpoints.
 }
 
 // validateConfig validates the configuration
@@ -110,9 +192,18 @@ func validateConfig(config *Config) error {
 	}
 
 	// Validate endpoints
+	if len(config.Endpoints) == 0 {
+		return fmt.Errorf("at least one endpoint is required")
+	}
+
 	for i, endpoint := range config.Endpoints {
 		if endpoint.Path == "" {
 			return fmt.Errorf("endpoint[%d]: path is required", i)
+		}
+
+		// Ensure path starts with /
+		if !strings.HasPrefix(endpoint.Path, "/") {
+			return fmt.Errorf("endpoint[%d]: path must start with /", i)
 		}
 
 		if len(endpoint.Destinations) == 0 {
@@ -124,14 +215,34 @@ func validateConfig(config *Config) error {
 				return fmt.Errorf("endpoint[%d].destination[%d]: url is required", i, j)
 			}
 
-			if dest.Method == "" {
-				// Default to POST if not specified
-				config.Endpoints[i].Destinations[j].Method = "POST"
+			// Validate URL
+			_, err := url.ParseRequestURI(dest.URL)
+			if err != nil {
+				return fmt.Errorf("endpoint[%d].destination[%d]: invalid url: %s", i, j, err)
 			}
 
-			// Set default timeout if not specified
-			if dest.Timeout == 0 {
-				config.Endpoints[i].Destinations[j].Timeout = 5 * time.Second
+			// Validate HTTP method
+			validMethods := map[string]bool{
+				"GET": true, "POST": true, "PUT": true, "DELETE": true,
+				"PATCH": true, "HEAD": true, "OPTIONS": true,
+			}
+			if !validMethods[strings.ToUpper(dest.Method)] {
+				return fmt.Errorf("endpoint[%d].destination[%d]: invalid method: %s", i, j, dest.Method)
+			}
+
+			// Validate timeout
+			if dest.Timeout < 0 {
+				return fmt.Errorf("endpoint[%d].destination[%d]: timeout cannot be negative", i, j)
+			}
+
+			// Validate retries
+			if dest.Retries < 0 {
+				return fmt.Errorf("endpoint[%d].destination[%d]: retries cannot be negative", i, j)
+			}
+
+			// Validate retry delay
+			if dest.RetryDelay < 0 {
+				return fmt.Errorf("endpoint[%d].destination[%d]: retry_delay cannot be negative", i, j)
 			}
 		}
 	}

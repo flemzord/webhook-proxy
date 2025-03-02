@@ -1,102 +1,77 @@
-# Action Plan for Webhook Proxy Development
+# Plan d'action pour le développement du webhook-proxy
 
-## Project Description
-A service that receives webhooks and forwards them to multiple configured destinations, with detailed logging of each step.
+## Description du projet
+Un service proxy pour recevoir des webhooks et les transférer à plusieurs destinations configurées, avec une journalisation détaillée de chaque étape.
 
-## Main Components
-1. HTTP server to receive incoming webhooks
-2. YAML configuration manager
-3. Routing system to forward webhooks
-4. Comprehensive logging system
-5. Error handling and retry mechanism
+## Composants principaux
+- Serveur HTTP pour recevoir les webhooks
+- Gestionnaire de proxy pour transférer les webhooks
+- Système de configuration pour définir les endpoints et les destinations
+- Système de journalisation pour enregistrer les événements
 
-## YAML Configuration File Structure
+## Structure du fichier de configuration YAML
 ```yaml
-# Example structure
 server:
   port: 8080
   host: "0.0.0.0"
 
 logging:
-  level: "info"  # debug, info, warn, error
-  format: "json" # json, text
-  output: "stdout" # stdout, file
-  file_path: "/var/log/webhook-proxy.log" # if output is file
+  level: "info"
+  format: "json"
+  output: "stdout"
+  file_path: "/path/to/log/file.log"
 
 endpoints:
   - path: "/webhook/github"
     destinations:
       - url: "https://destination1.example.com/webhook"
-        method: "POST"
         headers:
           Content-Type: "application/json"
-          X-Custom-Header: "value"
-        timeout: 5s
-        retries: 3
-        retry_delay: 1s
-      - url: "https://destination2.example.com/webhook"
-        method: "POST"
-        timeout: 3s
-        retries: 2
-  
-  - path: "/webhook/gitlab"
-    destinations:
-      - url: "https://destination3.example.com/webhook"
-        method: "POST"
+          X-Custom-Header: "custom-value"
 ```
 
-## Code Architecture
-- `main.go`: Application entry point
-- `config/`: Package for configuration management
-- `server/`: Package for HTTP server
-- `proxy/`: Package for webhook forwarding logic
-- `logger/`: Package for logging system
-- `models/`: Package for shared data structures
-- `utils/`: Package for utility functions
+## Architecture du code
+- `cmd/webhook-proxy/main.go`: Point d'entrée de l'application
+- `config/`: Gestion de la configuration
+- `logger/`: Système de journalisation
+- `server/`: Serveur HTTP
+- `proxy/`: Gestionnaire de proxy pour transférer les webhooks
 
-## External Dependencies
+## Dépendances externes
 - HTTP Framework: Chi
-- YAML Parsing: gopkg.in/yaml.v3
-- Structured Logging: zap or logrus
-- HTTP Client: standard or resty
+- Logging: logrus
+- Configuration: viper ou yaml.v3
 
-## Development Plan
+## Plan de développement
 
-### Phase 1: Project Structure Setup
-- [x] Initialize project structure
-- [x] Configure dependencies
-- [x] Create README.md with initial documentation
+### Phase 1: Configuration de base et serveur HTTP ✅
+- [x] Créer la structure du projet
+- [x] Configurer le système de journalisation
+- [x] Implémenter le serveur HTTP de base
+- [x] Créer le gestionnaire de proxy simple
+- [x] Remplacer Gin par Chi
 
-### Phase 2: Configuration
-- [ ] Implement YAML configuration parser
-- [ ] Create data structures to represent configuration
-- [ ] Add configuration validation
+### Phase 2: Configuration et validation ✅
+- [x] Implémenter le parser de configuration YAML
+- [x] Créer les structures de données pour représenter la configuration
+- [x] Ajouter la validation de la configuration
+- [x] Permettre le chargement de la configuration depuis des variables d'environnement
+- [x] Ajouter des tests unitaires pour la configuration
+- [x] Créer un fichier d'exemple de configuration
 
-### Phase 3: HTTP Server
-- [ ] Set up HTTP server
-- [ ] Implement handlers for configured endpoints
-- [ ] Add HTTP error handling
+### Phase 3: Amélioration du proxy et gestion des erreurs
+- [ ] Ajouter un mécanisme de retry pour les destinations en échec
+- [ ] Implémenter la gestion des timeouts
+- [ ] Ajouter des métriques pour surveiller les performances
+- [ ] Améliorer la journalisation des erreurs
+- [ ] Ajouter des tests unitaires pour le proxy
 
-### Phase 4: Logging System
-- [ ] Configure logging library
-- [ ] Implement logs for received webhooks
-- [ ] Implement logs for forwarded webhooks
-
-### Phase 5: Webhook Proxy
-- [ ] Develop webhook forwarding mechanism
-- [ ] Implement retry handling
-- [ ] Add support for custom headers
-
-### Phase 6: Testing and Documentation
-- [ ] Write unit tests
-- [ ] Write integration tests
-- [ ] Complete documentation
-- [ ] Add usage examples
-
-### Phase 7: Deployment
-- [ ] Create Dockerfile
-- [ ] Add startup scripts
-- [ ] Prepare configuration examples
+### Phase 4: Fonctionnalités avancées
+- [ ] Ajouter la possibilité de transformer les webhooks avant de les transférer
+- [ ] Implémenter l'authentification pour les endpoints
+- [ ] Ajouter la possibilité de filtrer les webhooks en fonction de leur contenu
+- [ ] Créer un tableau de bord pour visualiser les webhooks reçus et transférés
+- [ ] Ajouter la possibilité de rejouer les webhooks en échec
 
 ## Future Features (v2)
 - Authentication for incoming webhooks
