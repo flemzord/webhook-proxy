@@ -7,3 +7,4 @@ alwaysApply: false
 - The tests must run without errors
 - The linter must run without errors
 - The commands must be executed via the associated Make command
+- If the API changes, you must update the openapi.yaml file
