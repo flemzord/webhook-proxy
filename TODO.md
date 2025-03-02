@@ -1,15 +1,15 @@
-# Plan d'action pour le développement du webhook-proxy
+# Action Plan for webhook-proxy Development
 
-## Description du projet
-Un service proxy pour recevoir des webhooks et les transférer à plusieurs destinations configurées, avec une journalisation détaillée de chaque étape.
+## Project Description
+A proxy service for receiving webhooks and forwarding them to multiple configured destinations, with detailed logging of each step.
 
-## Composants principaux
-- Serveur HTTP pour recevoir les webhooks
-- Gestionnaire de proxy pour transférer les webhooks
-- Système de configuration pour définir les endpoints et les destinations
-- Système de journalisation pour enregistrer les événements
+## Main Components
+- HTTP server for receiving webhooks
+- Proxy manager for forwarding webhooks
+- Configuration system for defining endpoints and destinations
+- Logging system for recording events
 
-## Structure du fichier de configuration YAML
+## YAML Configuration File Structure
 ```yaml
 server:
   port: 8080
@@ -30,58 +30,58 @@ endpoints:
           X-Custom-Header: "custom-value"
 ```
 
-## Architecture du code
-- `cmd/webhook-proxy/main.go`: Point d'entrée de l'application
-- `config/`: Gestion de la configuration
-- `logger/`: Système de journalisation
-- `server/`: Serveur HTTP
-- `proxy/`: Gestionnaire de proxy pour transférer les webhooks
+## Code Architecture
+- `cmd/webhook-proxy/main.go`: Application entry point
+- `config/`: Configuration management
+- `logger/`: Logging system
+- `server/`: HTTP server
+- `proxy/`: Proxy manager for forwarding webhooks
 
-## Dépendances externes
+## External Dependencies
 - HTTP Framework: Chi
 - Logging: logrus
-- Configuration: viper ou yaml.v3
+- Configuration: viper or yaml.v3
 
-## Plan de développement
+## Development Plan
 
-### Phase 1: Configuration de base et serveur HTTP ✅
-- [x] Créer la structure du projet
-- [x] Configurer le système de journalisation
-- [x] Implémenter le serveur HTTP de base
-- [x] Créer le gestionnaire de proxy simple
-- [x] Remplacer Gin par Chi
+### Phase 1: Basic Configuration and HTTP Server ✅
+- [x] Create project structure
+- [x] Configure logging system
+- [x] Implement basic HTTP server
+- [x] Create simple proxy manager
+- [x] Replace Gin with Chi
 
-### Phase 2: Configuration et validation ✅
-- [x] Implémenter le parser de configuration YAML
-- [x] Créer les structures de données pour représenter la configuration
-- [x] Ajouter la validation de la configuration
-- [x] Permettre le chargement de la configuration depuis des variables d'environnement
-- [x] Ajouter des tests unitaires pour la configuration
-- [x] Créer un fichier d'exemple de configuration
+### Phase 2: Configuration and Validation ✅
+- [x] Implement YAML configuration parser
+- [x] Create data structures to represent configuration
+- [x] Add configuration validation
+- [x] Allow loading configuration from environment variables
+- [x] Add unit tests for configuration
+- [x] Create example configuration file
 
-### Phase 3: Amélioration du proxy et gestion des erreurs ✅
-- [x] Ajouter un mécanisme de retry pour les destinations en échec
-- [x] Implémenter la gestion des timeouts
-- [x] Ajouter des métriques pour surveiller les performances
-- [x] Améliorer la journalisation des erreurs
-- [x] Ajouter des tests unitaires pour le proxy
-- [x] Ajouter des endpoints pour les métriques et la santé
+### Phase 3: Proxy Improvement and Error Handling ✅
+- [x] Add retry mechanism for failed destinations
+- [x] Implement timeout management
+- [x] Add metrics to monitor performance
+- [x] Improve error logging
+- [x] Add unit tests for proxy
+- [x] Add endpoints for metrics and health
 
-### Phase 4: Documentation et API ✅
-- [x] Créer un fichier openapi.yaml a la racine du repository pour documenter l'API
+### Phase 4: Documentation and API ✅
+- [x] Create openapi.yaml file at the repository root to document the API
 
-### Phase 5: Qualité du code et outillage ✅
-- [x] Ajouter golangci-lint pour le linting du code
-- [x] Configurer les règles de linting adaptées au projet
-- [x] Corriger les problèmes de linting existants
+### Phase 5: Code Quality and Tooling ✅
+- [x] Add golangci-lint for code linting
+- [x] Configure linting rules adapted to the project
+- [x] Fix existing linting issues
 
-### Phase 6: Déploiement et distribution
-- [x] Configurer GoReleaser pour la création des binaires
-- [x] Créer un Dockerfile pour la conteneurisation
+### Phase 6: Deployment and Distribution
+- [x] Configure GoReleaser for binary creation
+- [x] Create Dockerfile for containerization
 
-### Phase 7: Intégration continue
-- [x] Configurer GitHub Actions pour l'intégration continue
-- [x] Ajouter des workflows pour les tests automatiques
-- [x] Configurer le linting automatique
-- [x] Ajouter la publication automatique des releases avec GoReleaser
-- [x] Configurer la construction et la publication des images Docker
+### Phase 7: Continuous Integration
+- [x] Configure GitHub Actions for continuous integration
+- [x] Add workflows for automated tests
+- [x] Configure automated linting
+- [x] Add automatic release publishing with GoReleaser
+- [x] Configure Docker image building and publishing

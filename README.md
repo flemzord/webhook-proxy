@@ -1,53 +1,53 @@
 # Webhook Proxy
 
-Un service proxy pour recevoir des webhooks et les transférer à plusieurs destinations.
+A proxy service for receiving webhooks and forwarding them to multiple destinations.
 
-## Fonctionnalités
+## Features
 
-- Réception de webhooks sur des endpoints configurables
-- Transfert des webhooks à plusieurs destinations
-- Journalisation détaillée des requêtes et des réponses
-- Configuration via fichier YAML ou variables d'environnement
-- Validation de la configuration
-- Mécanisme de retry pour les destinations en échec
-- Métriques pour surveiller les performances
-- Endpoints de santé et de métriques
+- Reception of webhooks on configurable endpoints
+- Forwarding of webhooks to multiple destinations
+- Detailed logging of requests and responses
+- Configuration via YAML file or environment variables
+- Configuration validation
+- Retry mechanism for failed destinations
+- Metrics to monitor performance
+- Health and metrics endpoints
 
 ## Installation
 
-### Binaires précompilés
+### Precompiled Binaries
 
-Vous pouvez télécharger les binaires précompilés pour votre système d'exploitation depuis la [page des releases](https://github.com/flemzord/webhook-proxy/releases).
+You can download precompiled binaries for your operating system from the [releases page](https://github.com/flemzord/webhook-proxy/releases).
 
-### Compilation depuis les sources
+### Building from Source
 
 ```bash
-# Cloner le dépôt
+# Clone the repository
 git clone https://github.com/flemzord/webhook-proxy.git
 cd webhook-proxy
 
-# Compiler le projet
+# Build the project
 go build -o webhook-proxy ./cmd/webhook-proxy
 
-# Exécuter le service
+# Run the service
 ./webhook-proxy -config config.yaml
 ```
 
-### Utilisation avec Docker
+### Using Docker
 
 ```bash
-# Télécharger l'image
+# Download the image
 docker pull flemzord/webhook-proxy:latest
 
-# Exécuter le conteneur avec votre fichier de configuration
+# Run the container with your configuration file
 docker run -v $(pwd)/config.yaml:/app/config/config.yaml -p 8080:8080 flemzord/webhook-proxy:latest
 ```
 
 ## Configuration
 
-### Fichier YAML
+### YAML File
 
-Créez un fichier de configuration YAML basé sur l'exemple fourni (`config.example.yaml`) :
+Create a YAML configuration file based on the provided example (`config.example.yaml`):
 
 ```yaml
 # Server configuration
@@ -72,56 +72,56 @@ endpoints:
       - url: "https://backup-service.example.com/github-events"
 ```
 
-### Variables d'environnement
+### Environment Variables
 
-Vous pouvez également configurer le service à l'aide de variables d'environnement, qui ont priorité sur les valeurs du fichier YAML :
+You can also configure the service using environment variables, which take precedence over the values in the YAML file:
 
-| Variable | Description | Exemple |
+| Variable | Description | Example |
 |----------|-------------|---------|
-| `WEBHOOK_PROXY_SERVER_HOST` | Hôte du serveur | `0.0.0.0` |
-| `WEBHOOK_PROXY_SERVER_PORT` | Port du serveur | `8080` |
-| `WEBHOOK_PROXY_LOG_LEVEL` | Niveau de journalisation (debug, info, warn, error) | `info` |
-| `WEBHOOK_PROXY_LOG_FORMAT` | Format de journalisation (json, text) | `json` |
-| `WEBHOOK_PROXY_LOG_OUTPUT` | Destination de journalisation (stdout, stderr, file) | `stdout` |
-| `WEBHOOK_PROXY_LOG_FILE_PATH` | Chemin du fichier de journalisation (requis si output=file) | `/var/log/webhook-proxy.log` |
+| `WEBHOOK_PROXY_SERVER_HOST` | Server host | `0.0.0.0` |
+| `WEBHOOK_PROXY_SERVER_PORT` | Server port | `8080` |
+| `WEBHOOK_PROXY_LOG_LEVEL` | Logging level (debug, info, warn, error) | `info` |
+| `WEBHOOK_PROXY_LOG_FORMAT` | Logging format (json, text) | `json` |
+| `WEBHOOK_PROXY_LOG_OUTPUT` | Logging destination (stdout, stderr, file) | `stdout` |
+| `WEBHOOK_PROXY_LOG_FILE_PATH` | Logging file path (required if output=file) | `/var/log/webhook-proxy.log` |
 
-**Note**: Les endpoints doivent être configurés via le fichier YAML.
+**Note**: Endpoints must be configured via the YAML file.
 
-## Utilisation
+## Usage
 
-1. Démarrez le service avec votre fichier de configuration :
+1. Start the service with your configuration file:
    ```bash
    ./webhook-proxy -config config.yaml
    ```
 
-2. Envoyez des webhooks aux endpoints configurés, par exemple :
+2. Send webhooks to the configured endpoints, for example:
    ```bash
    curl -X POST http://localhost:8080/webhook/github -d '{"event":"push","repository":"example"}'
    ```
 
-3. Le service transférera la requête à toutes les destinations configurées pour cet endpoint.
+3. The service will forward the request to all destinations configured for that endpoint.
 
-## Endpoints système
+## System Endpoints
 
-En plus des endpoints configurés pour les webhooks, le service expose les endpoints système suivants :
+In addition to the configured webhook endpoints, the service exposes the following system endpoints:
 
-### Métriques
+### Metrics
 
-- **GET /metrics** : Renvoie les métriques du service au format JSON, incluant :
-  - Nombre total de requêtes
-  - Nombre de requêtes réussies
-  - Nombre de requêtes échouées
-  - Nombre de retries
-  - Taux de succès
-  - Métriques par destination
+- **GET /metrics**: Returns service metrics in JSON format, including:
+  - Total number of requests
+  - Number of successful requests
+  - Number of failed requests
+  - Number of retries
+  - Success rate
+  - Metrics per destination
 
-- **POST /metrics/reset** : Réinitialise toutes les métriques
+- **POST /metrics/reset**: Resets all metrics
 
-### Santé
+### Health
 
-- **GET /health** : Renvoie l'état de santé du service
+- **GET /health**: Returns the health status of the service
 
-Exemple de réponse de l'endpoint `/metrics` :
+Example response from the `/metrics` endpoint:
 ```json
 {
   "global": {
@@ -166,58 +166,58 @@ Exemple de réponse de l'endpoint `/metrics` :
 }
 ```
 
-## Développement
+## Development
 
-### Prérequis
+### Prerequisites
 
-- Go 1.21 ou supérieur
+- Go 1.21 or higher
 - Make
-- golangci-lint (pour le linting)
-- goreleaser (pour la création des releases)
+- golangci-lint (for linting)
+- goreleaser (for creating releases)
 
-Vous pouvez installer les dépendances de développement avec :
+You can install the development dependencies with:
 
 ```bash
 make dev-deps
 ```
 
-### Commandes Make
+### Make Commands
 
-- `make build` : Compile l'application
-- `make test` : Exécute les tests
-- `make lint` : Vérifie le code avec golangci-lint
-- `make lint-fix` : Corrige automatiquement les problèmes de linting
-- `make release-snapshot` : Crée une release snapshot avec GoReleaser (pour tester)
-- `make release` : Crée une release officielle avec GoReleaser
+- `make build`: Compiles the application
+- `make test`: Runs the tests
+- `make lint`: Checks the code with golangci-lint
+- `make lint-fix`: Automatically fixes linting issues
+- `make release-snapshot`: Creates a snapshot release with GoReleaser (for testing)
+- `make release`: Creates an official release with GoReleaser
 
-### Création d'une release
+### Creating a Release
 
-Pour créer une nouvelle release :
+To create a new release:
 
-1. Assurez-vous que tous les tests passent et que le linting est correct
+1. Make sure all tests pass and linting is correct
    ```bash
    make lint test
    ```
 
-2. Créez un tag Git pour la nouvelle version
+2. Create a Git tag for the new version
    ```bash
    git tag -a v1.0.0 -m "Version 1.0.0"
    git push origin v1.0.0
    ```
 
-3. Utilisez GoReleaser pour créer la release
+3. Use GoReleaser to create the release
    ```bash
    make release
    ```
 
-Cette commande va :
-- Créer des binaires pour différentes plateformes (Linux, macOS, Windows)
-- Générer des archives contenant les binaires et la documentation
-- Créer et pousser une image Docker
-- Générer un changelog basé sur les commits
+This command will:
+- Create binaries for different platforms (Linux, macOS, Windows)
+- Generate archives containing the binaries and documentation
+- Create and push a Docker image
+- Generate a changelog based on commits
 
-Pour plus de détails sur le développement et les fonctionnalités à venir, consultez le fichier [TODO.md](TODO.md).
+For more details on development and upcoming features, see the [TODO.md](TODO.md) file.
 
-## Licence
+## License
 
-Ce projet est sous licence MIT. Voir le fichier LICENSE pour plus de détails.
+This project is licensed under the MIT License. See the LICENSE file for details.
